@@ -102,20 +102,142 @@ function evalSegs(x, y, z, segs, out, coreRadius = 0) {
   return out;
 }
 
-// 均匀磁化圆柱的等效磁荷盘（螺线管快速模型）：圆盘 → 若干环形点荷
-function buildDisk(yFace, R, q, radialCount = 8, angularCount = 16) {
-  const list = [];
-  for (let k = 0; k < radialCount; k++) {
-    const rIn = Math.sqrt(k / radialCount) * R;
-    const rOut = Math.sqrt((k + 1) / radialCount) * R;
-    const rc = (rIn + rOut) / 2;
-    const w = (rOut * rOut - rIn * rIn) / (R * R);
-    for (let j = 0; j < angularCount; j++) {
-      const a = (j / angularCount) * Math.PI * 2 + k * 0.19;
-      list.push(rc * Math.cos(a), yFace, rc * Math.sin(a), (q * w) / angularCount);
-    }
+function carlsonRF(x, y, z) {
+  const C1 = 1 / 24, C2 = 0.1, C3 = 3 / 44, C4 = 1 / 14;
+  let xt = x, yt = y, zt = z;
+  let ave, dx, dy, dz;
+  for (let i = 0; i < 20; i++) {
+    const sx = Math.sqrt(xt), sy = Math.sqrt(yt), sz = Math.sqrt(zt);
+    const lambda = sx * (sy + sz) + sy * sz;
+    xt = 0.25 * (xt + lambda);
+    yt = 0.25 * (yt + lambda);
+    zt = 0.25 * (zt + lambda);
+    ave = (xt + yt + zt) / 3;
+    dx = (ave - xt) / ave;
+    dy = (ave - yt) / ave;
+    dz = (ave - zt) / ave;
+    if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) < 0.0025) break;
   }
-  return new Float64Array(list);
+  const e2 = dx * dy - dz * dz;
+  const e3 = dx * dy * dz;
+  return (1 + (C1 * e2 - C2 - C3 * e3) * e2 + C4 * e3) / Math.sqrt(ave);
+}
+
+function carlsonRD(x, y, z) {
+  const C1 = 3 / 14, C2 = 1 / 6, C3 = 9 / 22, C4 = 3 / 26;
+  const C5 = C3 / 4, C6 = 1.5 * C4;
+  let xt = x, yt = y, zt = z, sum = 0, fac = 1;
+  let ave, dx, dy, dz;
+  for (let i = 0; i < 24; i++) {
+    const sx = Math.sqrt(xt), sy = Math.sqrt(yt), sz = Math.sqrt(zt);
+    const lambda = sx * (sy + sz) + sy * sz;
+    sum += fac / (sz * (zt + lambda));
+    fac *= 0.25;
+    xt = 0.25 * (xt + lambda);
+    yt = 0.25 * (yt + lambda);
+    zt = 0.25 * (zt + lambda);
+    ave = (xt + yt + 3 * zt) / 5;
+    dx = (ave - xt) / ave;
+    dy = (ave - yt) / ave;
+    dz = (ave - zt) / ave;
+    if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) < 0.0015) break;
+  }
+  const ea = dx * dy;
+  const eb = dz * dz;
+  const ec = ea - eb;
+  const ed = ea - 6 * eb;
+  const ee = ed + 2 * ec;
+  const correction = 1
+    + ed * (-C1 + C5 * ed - C6 * dz * ee)
+    + dz * (C2 * ee + dz * (-C3 * ec + dz * C4 * ea));
+  return 3 * sum + fac * correction / (ave * Math.sqrt(ave));
+}
+
+function ellipticKE(parameter) {
+  const m = Math.max(0, Math.min(1 - 1e-12, parameter));
+  const rf = carlsonRF(0, 1 - m, 1);
+  return { K: rf, E: rf - (m / 3) * carlsonRD(0, 1 - m, 1) };
+}
+
+// Circular loop in an x-z plane. Positive ampere-turns produce +Y field on axis.
+function evalCircularLoopY(x, y, z, loopY, radius, ampereTurns, out, coreRadius = 0.035) {
+  const rho = Math.hypot(x, z);
+  const axial = y - loopY;
+  const scale = (MU0 * ampereTurns * TESLA_TO_MICROTESLA) / LENGTH_UNIT_M;
+  if (rho < 1e-7) {
+    const denom = Math.pow(radius * radius + axial * axial, 1.5);
+    out.set(0, scale * radius * radius / (2 * denom), 0);
+    return out;
+  }
+
+  const radialOffset = rho - radius;
+  const wireDistance = Math.hypot(radialOffset, axial);
+  if (coreRadius > 0 && wireDistance < coreRadius) {
+    if (wireDistance < 1e-10) { out.set(0, 0, 0); return out; }
+    const magnitude = scale * wireDistance / (2 * Math.PI * coreRadius * coreRadius);
+    const br = magnitude * axial / wireDistance;
+    const by = -magnitude * radialOffset / wireDistance;
+    out.set(br * x / rho, by, br * z / rho);
+    return out;
+  }
+
+  const sum2 = (radius + rho) ** 2 + axial * axial;
+  const diff2 = radialOffset * radialOffset + axial * axial;
+  const root = Math.sqrt(sum2);
+  const { K, E } = ellipticKE((4 * radius * rho) / sum2);
+  const prefactor = scale / (2 * Math.PI * root);
+  const br = prefactor * axial / rho
+    * (-K + ((radius * radius + rho * rho + axial * axial) / diff2) * E);
+  const by = prefactor
+    * (K + ((radius * radius - rho * rho - axial * axial) / diff2) * E);
+  out.set(br * x / rho, by, br * z / rho);
+  return out;
+}
+
+function evalPolylineField(x, y, z, points, current, out, coreRadius = 0.055) {
+  let bx = 0, by = 0, bz = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    const r1x = x - a.x, r1y = y - a.y, r1z = z - a.z;
+    const r2x = x - b.x, r2y = y - b.y, r2z = z - b.z;
+    const m1 = Math.hypot(r1x, r1y, r1z), m2 = Math.hypot(r2x, r2y, r2z);
+    if (m1 < 1e-10 || m2 < 1e-10) continue;
+    const dot = r1x * r2x + r1y * r2y + r1z * r2z;
+    const denom = m1 * m2 * (m1 * m2 + dot);
+    if (denom < 1e-14) continue;
+    const cx = r1y * r2z - r1z * r2y;
+    const cy = r1z * r2x - r1x * r2z;
+    const cz = r1x * r2y - r1y * r2x;
+    const distanceSq = pointSegmentDistanceSq(x, y, z, a, b);
+    const coreScale = distanceSq < coreRadius * coreRadius ? distanceSq / (coreRadius * coreRadius) : 1;
+    const factor = BIOT_SAVART_SCALE * current * (m1 + m2) * coreScale / denom;
+    bx += cx * factor; by += cy * factor; bz += cz * factor;
+  }
+  out.set(bx, by, bz);
+  return out;
+}
+
+function pointSegmentDistanceSq(x, y, z, a, b) {
+  const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+  const apx = x - a.x, apy = y - a.y, apz = z - a.z;
+  const denom = abx * abx + aby * aby + abz * abz;
+  const t = denom > 0 ? Math.max(0, Math.min(1, (apx * abx + apy * aby + apz * abz) / denom)) : 0;
+  const dx = apx - t * abx, dy = apy - t * aby, dz = apz - t * abz;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+function buildBentWirePath(width, height) {
+  const w = width / 2, h = height / 2;
+  const returnDepth = Math.max(5.5, width + 1.5);
+  return [
+    new THREE.Vector3(-w, -h, 0),
+    new THREE.Vector3(-w, h, 0),
+    new THREE.Vector3(w, h, 0),
+    new THREE.Vector3(w, -h, 0),
+    new THREE.Vector3(w, -h, -returnDepth),
+    new THREE.Vector3(-w, -h, -returnDepth),
+    new THREE.Vector3(-w, -h, 0),
+  ];
 }
 
 function appendRectFace(list, center, u, v, uLen, vLen, nu, nv, sigma) {
@@ -135,79 +257,6 @@ function appendRectFace(list, center, u, v, uLen, vLen, nu, nv, sigma) {
   }
 }
 
-function appendMagnetizedBox(list, box, magnetization, resolution = 6) {
-  const [xmin, xmax, ymin, ymax, zmin, zmax] = box;
-  const [mx, my, mz] = magnetization;
-  const xLen = xmax - xmin, yLen = ymax - ymin, zLen = zmax - zmin;
-  const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2, cz = (zmin + zmax) / 2;
-  appendRectFace(list, [xmin, cy, cz], [0, 1, 0], [0, 0, 1], yLen, zLen, resolution, resolution, -mx);
-  appendRectFace(list, [xmax, cy, cz], [0, 1, 0], [0, 0, 1], yLen, zLen, resolution, resolution, mx);
-  appendRectFace(list, [cx, ymin, cz], [1, 0, 0], [0, 0, 1], xLen, zLen, resolution, resolution, -my);
-  appendRectFace(list, [cx, ymax, cz], [1, 0, 0], [0, 0, 1], xLen, zLen, resolution, resolution, my);
-  appendRectFace(list, [cx, cy, zmin], [1, 0, 0], [0, 1, 0], xLen, yLen, resolution, resolution, -mz);
-  appendRectFace(list, [cx, cy, zmax], [1, 0, 0], [0, 1, 0], xLen, yLen, resolution, resolution, mz);
-}
-
-function buildPoleDiskX(xFace, radius, totalCharge, radialCount = 8, angularCount = 20) {
-  const list = [];
-  for (let k = 0; k < radialCount; k++) {
-    const rIn = Math.sqrt(k / radialCount) * radius;
-    const rOut = Math.sqrt((k + 1) / radialCount) * radius;
-    const rc = (rIn + rOut) / 2;
-    const weight = (rOut * rOut - rIn * rIn) / (radius * radius);
-    for (let j = 0; j < angularCount; j++) {
-      const a = (j / angularCount) * Math.PI * 2 + k * 0.17;
-      list.push(xFace, rc * Math.cos(a), rc * Math.sin(a), (totalCharge * weight) / angularCount);
-    }
-  }
-  return list;
-}
-
-function buildHorseshoePath(gap) {
-  const radius = 0.38;
-  const outerX = gap / 2 + 1.0;
-  const points = [
-    new THREE.Vector3(-gap / 2, 0, 0),
-    new THREE.Vector3(-gap / 2 - 0.46, 0, 0),
-    new THREE.Vector3(-outerX, -0.34, 0),
-    new THREE.Vector3(-outerX, -1.45, 0),
-    new THREE.Vector3(-outerX * 0.80, -1.92, 0),
-    new THREE.Vector3(0, -2.28, 0),
-    new THREE.Vector3(outerX * 0.80, -1.92, 0),
-    new THREE.Vector3(outerX, -1.45, 0),
-    new THREE.Vector3(outerX, -0.34, 0),
-    new THREE.Vector3(gap / 2 + 0.46, 0, 0),
-    new THREE.Vector3(gap / 2, 0, 0),
-  ];
-  const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.35);
-  const samples = [];
-  const tangents = [];
-  const count = 120;
-  for (let i = 0; i <= count; i++) {
-    const t = i / count;
-    samples.push(curve.getPoint(t));
-    tangents.push(curve.getTangent(t).normalize());
-  }
-  return { curve, samples, tangents, radius, leftPole: samples[0], rightPole: samples[count] };
-}
-
-function nearestHorseshoePath(x, y, z, path) {
-  let best = Infinity;
-  let bestIndex = -1;
-  for (let i = 0; i < path.samples.length; i++) {
-    const point = path.samples[i];
-    const d2 = (x - point.x) ** 2 + (y - point.y) ** 2 + (z - point.z) ** 2;
-    if (d2 < best) { best = d2; bestIndex = i; }
-  }
-  if (best > path.radius * path.radius) return null;
-  const point = path.samples[bestIndex];
-  const tangent = path.tangents[bestIndex];
-  const along = (x - point.x) * tangent.x + (y - point.y) * tangent.y + (z - point.z) * tangent.z;
-  if (bestIndex === 0 && along < 0) return null;
-  if (bestIndex === path.samples.length - 1 && along > 0) return null;
-  return { tangent, distanceSq: best };
-}
-
 /* ==================== 场景定义 ==================== */
 const SCENES = [
   {
@@ -218,21 +267,21 @@ const SCENES = [
       { id: 'moment', label: '赤道表面场强', min: 20, max: 60, step: 1, val: 30, unit: 'μT' },
     ],
     section: { n: 'z', off: 0, rot: 0 }, size: 15,
-    solver: '解析磁化球',
-    formula: '球外：B = (μ₀/4π)[3(m⃗·r̂)r̂−m⃗]/r³；球内：B = (2/3)μ₀M⃗',
+    solver: '球外偶极 + 球内核心电流近似',
+    formula: '球外：B ∝ [3(m⃗·r̂)r̂−m⃗]/r³；球内：连续、无散度的轴对称多项式场',
     valueLine: (P) => `赤道 ${P.moment} μT，磁极 ${2 * P.moment} μT，倾角 ${P.tilt}°`,
     observations: [
       '地磁 N 极（磁感线出发）在地理南极附近；地磁 S 极（磁感线进入）在地理北极附近',
       '指南针 N 极指向地理北方——顺着磁感线的方向',
       '赤道附近磁感线近似水平，两极附近近似竖直',
-      '磁感线穿过地球内部，全部闭合——不存在磁单极子',
+      '球内采用光滑核心电流近似，与球外偶极场连续衔接并形成闭合回路',
     ],
     selfCheck: [
       '偶极子场 B ∝ 1/r³，比点电荷的 1/r² 衰减更快',
-      '外部：N极 → S极；内部：S极 → N极，处处闭合',
+      '外部：N极 → S极；内部：S极 → N极，球面处方向连续',
       '磁轴与自转轴夹角约 11.5°（磁偏角随地点变化）',
     ],
-    ai: '地球磁场可近似为倾斜约 11.5° 的磁偶极子。地理北极附近对应磁性 S 极，因此指南针的 N 极指向地理北方。磁感线在地球外部从地磁 N 极到 S 极，在内部从 S 极回到 N 极。',
+    ai: '球外采用倾斜约 11.5° 的偶极主场；球内不是“永磁球”，而是用光滑、无散度的核心电流场近似地磁发电机产生的回程场。该模型服务于课堂辨形，不代替真实地核动力学。',
     camera: { pos: [13, 7, 17], target: [0, 0, 0] },
   },
   {
@@ -261,29 +310,31 @@ const SCENES = [
     camera: { pos: [9, 5.5, 12], target: [0, 0, 0] },
   },
   {
-    id: 'horseshoe', name: '马蹄形磁铁',
-    lead: '把条形磁铁弯成 U 形，N、S 两极面对面。在间隙较窄时，只有远离边缘的中央小区域可近似看成匀强磁场。',
+    id: 'bent-wire', name: '弯折导线',
+    lead: '三段可见导线构成近似“缺一边”的方形，电流通过后方远置回流线闭合。靠近任一长直段且远离弯角时，局部磁场逐渐接近无限长直导线的同心圆分布。',
     params: [
-      { id: 'gap', label: '极面间距', min: 0.4, max: 1.6, step: 0.1, val: 0.8, displayScale: 10, unit: 'cm' },
-      { id: 'strength', label: '等效磁化强度 μ₀M', min: 50, max: 300, step: 10, val: 150, unit: 'mT' },
+      { id: 'current', label: '电流 I', min: 10, max: 100, step: 5, val: 50, unit: 'A' },
+      { id: 'width', label: '可见宽度', min: 2.5, max: 5, step: 0.25, val: 4, displayScale: 10, unit: 'cm' },
+      { id: 'height', label: '可见高度', min: 4, max: 7, step: 0.25, val: 5.5, displayScale: 10, unit: 'cm' },
+      { id: 'direction', label: '电流方向', type: 'select', options: ['左侧向上', '左侧向下'], val: '左侧向上' },
     ],
-    section: { n: 'z', off: 0, rot: 0 }, size: 10,
-    solver: 'U 形分段磁化积分',
-    formula: '窄间隙中央区域：B 近似平行；边缘存在漏磁',
-    valueLine: (P) => `极面间距 d = ${P.gap * 10} cm，μ₀M = ${P.strength} mT`,
+    section: { n: 'y', off: 0, rot: 0 }, size: 13,
+    solver: '闭合分段 Biot–Savart 积分',
+    formula: 'B = (μ₀I/4π)∮dl⃗×r⃗/r³；局部 r ≪ D 时 B ≈ μ₀I/(2πr)',
+    valueLine: (P) => `${P.direction} · I = ${P.current} A，宽 ${P.width * 10} cm，高 ${P.height * 10} cm`,
     observations: [
-      '极面宽度与间隙相近时，间隙中央区域磁场近似平行',
-      '场强通常在极面附近较大；中央区域的特点是方向和大小较均匀',
-      '间隙边缘磁感线向外凸出——边缘效应',
-      '磁体内部磁感线沿 U 形路径从 S 回到 N',
+      '三段铜色导线是课堂装置中直接可见的通电部分',
+      '灰色回流线放在后方，使稳恒电流路径保持闭合',
+      '越靠近长直段中部、越远离弯角，局部磁感线越接近同心圆',
+      '弯角、相邻导线和回流线会共同改变整体磁场，不能把整套装置当成一根无限长直导线',
     ],
     selfCheck: [
-      '极面越近、面积越大，间隙场越强越均匀',
-      '只有远离边缘的中央小区域才可近似视为匀强场',
-      '磁感线在磁体内外首尾相接、处处闭合',
+      '计算包含完整闭合回路，不使用物理上未定义的开路稳恒电流',
+      '局部距离远小于到端点/弯角的距离时，数值结果逼近 μ₀I/(2πr)',
+      '电流反向后，各处磁场方向同步反转，大小保持不变',
     ],
-    ai: '马蹄形磁铁采用连续 U 形磁路近似，磁化方向沿磁体中心线平滑转弯。面对面的极面缩短了空气磁路，使间隙中央小区域接近匀强；越靠近边缘，漏磁和弯曲越明显。',
-    camera: { pos: [0, 0.9, 9.2], target: [0, -1.15, 0] },
+    ai: '弯折导线按完整闭合电路建模。画面突出三段可见导线，同时明确显示远置回流路径。这个场景适合比较“有限弯折导线的真实叠加场”和“局部无限长直导线近似”的适用条件。',
+    camera: { pos: [9.5, 6.5, 13.5], target: [0, 0.35, -0.8] },
   },
   {
     id: 'straight-wire', name: '通电直导线',
@@ -314,7 +365,8 @@ const SCENES = [
     id: 'two-wires', name: '双导线',
     lead: '两根平行通电导线的磁场按叠加原理合成。同向电流相吸、反向电流相斥——这是安培力的经典演示。',
     params: [
-      { id: 'current', label: '电流 I', min: 10, max: 100, step: 5, val: 50, unit: 'A' },
+      { id: 'current1', label: '左导线电流 I₁', min: 10, max: 100, step: 5, val: 50, unit: 'A' },
+      { id: 'current2', label: '右导线电流 I₂', min: 10, max: 100, step: 5, val: 50, unit: 'A' },
       { id: 'spacing', label: '导线间距', min: 1.5, max: 5, step: 0.25, val: 3, displayScale: 10, unit: 'cm' },
       { id: 'direction', label: '电流方向', type: 'select', options: ['同向', '反向'], val: '同向' },
       { id: 'display', label: '显示模式', type: 'select', options: ['合磁场', '仅左导线', '仅右导线'], val: '合磁场' },
@@ -323,10 +375,10 @@ const SCENES = [
     solver: '双导线解析叠加',
     formula: 'B = B₁ + B₂；Bᵢ = μ₀Iᵢ/(2πrᵢ)',
     valueLine: (P) => P.display === '合磁场'
-      ? `${P.direction}电流 · d = ${P.spacing * 10} cm`
-      : `${P.display} · 可视导线电流沿 +Y，d = ${P.spacing * 10} cm`,
+      ? `${P.direction} · I₁ = ${P.current1} A，I₂ = ${P.current2} A，d = ${P.spacing * 10} cm`
+      : `${P.display} · d = ${P.spacing * 10} cm`,
     observations: [
-      '同向电流：两线之间磁场相互抵消，导线相互吸引',
+      '同向且 I₁=I₂：几何中点磁场严格为零；电流不等时零场点向较小电流一侧移动',
       '反向电流：两线之间磁场叠加增强，导线相互排斥',
       '反向电流中垂面上 B 同向叠加——磁感线密集穿过中面',
       '切换「显示模式」可单独查看每根导线的磁场，体会矢量叠加',
@@ -334,13 +386,12 @@ const SCENES = [
       '导线上的红色箭头表示各自电流方向',
     ],
     selfCheck: [
-      '同向电流中面（两线正中间）B = 0',
+      '只有同向且 I₁=I₂ 时，两线正中点 B = 0',
       '反向电流中垂面上两线贡献同向叠加；越靠近导线场越强',
-      '反向电流磁感线为阿波罗尼奥斯圆；中垂面是延伸到视窗外的分界线',
-      '同向电流大回路为 Cassini 卵形线（r₁·r₂=常数）',
+      'I₁=I₂ 的反向电流具有中垂分界线；电流不等时对称性消失',
       '叠加原理：B_total = B₁ + B₂（切换显示模式验证）',
     ],
-    ai: '两根平行导线是"磁场叠加 + 安培力"的经典场景。同向电流中间区域磁场抵消（B=0），导线相吸；反向电流中间叠加增强，导线相斥。单位长度安培力 F/L = μ₀I₁I₂/(2πd)。',
+    ai: '两根平行导线是“磁场叠加 + 安培力”的经典场景。两根电流可独立调节；只有同向、等流时几何中点才严格为零。单位长度安培力 F/L = μ₀I₁I₂/(2πd)。',
     camera: { pos: [8.5, 5, 9], target: [0, 0, 0] },
   },
   {
@@ -371,7 +422,7 @@ const SCENES = [
   },
   {
     id: 'solenoid', name: '通电螺线管',
-    lead: '密绕螺线管可等效为均匀磁化圆柱。长管的中央区域近似匀强 B ≈ μ₀nI；靠近管口时端部效应明显，外部场类似条形磁铁。',
+    lead: '密绕螺线管可看作连续分布的圆形电流。长管中央区域近似匀强 B ≈ μ₀nI；沿轴线由中心走向管口时场强减小，外部场类似条形磁铁。',
     params: [
       { id: 'current', label: '电流 I', min: 10, max: 100, step: 5, val: 50, unit: 'A' },
       { id: 'radius', label: '半径 R', min: 1, max: 1.75, step: 0.25, val: 1.5, displayScale: 10, unit: 'cm' },
@@ -380,8 +431,8 @@ const SCENES = [
       { id: 'direction', label: '电流绕向', type: 'select', options: ['正向（N 在 +Y）', '反向（N 在 −Y）'], val: '正向（N 在 +Y）' },
     ],
     section: { n: 'z', off: 0, rot: 0 }, size: 14,
-    solver: '有限磁化圆柱积分',
-    formula: 'B内 ≈ μ₀nI，n = N/L',
+    solver: '有限圆环 Biot–Savart 叠加',
+    formula: 'B轴(y) = (μ₀nI/2)(cosθ₁−cosθ₂)，中央 B ≈ μ₀nI',
     valueLine: (P) => {
       const ideal = (MU0 * (P.nLoops / (P.length * LENGTH_UNIT_M)) * P.current) * 1e3;
       const finite = P.length / Math.sqrt(P.length * P.length + 4 * P.radius * P.radius);
@@ -389,17 +440,18 @@ const SCENES = [
     },
     observations: [
       '长螺线管中央区域磁感线近似平行、等距、同向',
+      '轴线上从中心走向管口时磁场逐渐减弱；长管端口约为中央场的一半',
       '管外磁感线稀疏，分布类似条形磁铁',
       '绕线上的红色箭头表示电流绕向（右手定则定 N 极）',
       '匝密度决定中心场强；长度与半径之比越大，中央匀强区域越明显',
       '参数范围保持 L ≥ 2R，以匹配高中课堂中的螺线管近似',
     ],
     selfCheck: [
-      '理想无限长螺线管内部 B = μ₀nI；有限管只在中央区域近似成立',
-      '等效于均匀磁化圆柱（表面磁荷模型），无离散匝畸变',
+      '理想无限长螺线管内部 B = μ₀nI；有限管轴线场使用有限长解析式交叉验证',
+      '数值场由 48 层等效圆环直接叠加，管口两侧方向连续且无端面反向尖峰',
       '两端面即 N、S 极，磁感线在管内外闭合',
     ],
-    ai: '螺线管采用连续面电流的等效均匀磁化圆柱模型。有限长度会产生端部效应，因此只有中央区域接近 B ≈ μ₀nI；切换电流绕向时，管内磁场和 N、S 极同步反转。',
+    ai: '螺线管采用有限圆环的 Biot–Savart 叠加模型，不使用端面磁荷点阵。有限长度产生端部效应：中央较强，管口较弱，场方向在管口内外连续；切换绕向时，内部磁场和 N、S 极同步反转。',
     camera: { pos: [16, 10, 21], target: [0, 0, 0] },
   },
 ];
@@ -414,10 +466,22 @@ function buildField(sceneId, P) {
       const M = P.moment * EARTH_R * EARTH_R * EARTH_R;
       const mx = Math.sin(t) * M, my = -Math.cos(t) * M, mz = 0;
       const Re = EARTH_R, Re2 = Re * Re;
-      const Bin = (2 * M) / (Re * Re * Re); // 均匀磁化球内部 B = 2/3 μ0M
+      const surfaceScale = M / (Re * Re * Re);
       const evalB = (x, y, z, out) => {
-        if (x * x + y * y + z * z < Re2) {
-          const s = Bin / M; out.set(mx * s, my * s, mz * s); return out;
+        const r2 = x * x + y * y + z * z;
+        if (r2 < Re2) {
+          // Smooth, divergence-free core-current model. The polynomial vector potential
+          // matches both normal and tangential B continuously to the external dipole.
+          const ndotm = r2 > 1e-14 ? (x * mx + y * my + z * mz) / (Math.sqrt(r2) * M) : 0;
+          const rHatScale = r2 > 1e-14 ? ndotm / Math.sqrt(r2) : 0;
+          const radialFactor = (3 * surfaceScale * r2) / Re2;
+          const momentFactor = 5 * surfaceScale - (6 * surfaceScale * r2) / Re2;
+          out.set(
+            momentFactor * mx / M + radialFactor * x * rHatScale,
+            momentFactor * my / M + radialFactor * y * rHatScale,
+            momentFactor * mz / M + radialFactor * z * rHatScale,
+          );
+          return out;
         }
         return evalDipole(x, y, z, mx, my, mz, out);
       };
@@ -441,24 +505,18 @@ function buildField(sceneId, P) {
       const inSolid = (x, y, z) => Math.abs(x) < hw && Math.abs(y) < Lh && Math.abs(z) < hw;
       return { evalB, inSolid, heatMask: inSolid, poleN: new THREE.Vector3(0, Lh, 0), poleS: new THREE.Vector3(0, -Lh, 0), hw, M0 };
     }
-    case 'horseshoe': {
-      const g = P.gap, q = P.strength;
-      const M0 = q * 1000;
-      const path = buildHorseshoePath(g);
-      const area = Math.PI * path.radius * path.radius;
-      const poleCharge = M0 * area;
-      const mono = new Float64Array([
-        ...buildPoleDiskX(-g / 2, path.radius, -poleCharge),
-        ...buildPoleDiskX(g / 2, path.radius, poleCharge),
-      ]);
-      const evalB = (x, y, z, out) => {
-        evalMonopoles(x, y, z, mono, out);
-        const nearest = nearestHorseshoePath(x, y, z, path);
-        if (nearest) out.addScaledVector(nearest.tangent, M0);
-        return out;
+    case 'bent-wire': {
+      const sign = P.direction === '左侧向下' ? -1 : 1;
+      const points = buildBentWirePath(P.width, P.height);
+      const core = 0.055;
+      const evalB = (x, y, z, out) => evalPolylineField(x, y, z, points, P.current * sign, out, core);
+      const heatMask = (x, y, z) => {
+        for (let i = 0; i < points.length - 1; i++) {
+          if (pointSegmentDistanceSq(x, y, z, points[i], points[i + 1]) < core * core) return true;
+        }
+        return false;
       };
-      const inSolid = (x, y, z) => Boolean(nearestHorseshoePath(x, y, z, path));
-      return { evalB, inSolid, heatMask: inSolid, g, path, M0 };
+      return { evalB, inSolid: null, heatMask, points, sign, core };
     }
     case 'straight-wire': {
       const I = P.current * (P.direction.includes('向下') ? -1 : 1);
@@ -467,22 +525,22 @@ function buildField(sceneId, P) {
       return { evalB, inSolid: null, heatMask };
     }
     case 'two-wires': {
-      const I = P.current, d = P.spacing;
+      const I1 = P.current1, I2 = P.current2, d = P.spacing;
       const showLeft = P.display !== '仅右导线';
       const showRight = P.display !== '仅左导线';
       const dir2 = showLeft && showRight && P.direction === '反向' ? -1 : 1;
       const evalB = (x, y, z, out) => {
-        if (showLeft) evalWire(x, y, z, -d / 2, 0, 0, 0, 1, 0, I, out);
+        if (showLeft) evalWire(x, y, z, -d / 2, 0, 0, 0, 1, 0, I1, out);
         else out.set(0, 0, 0);
         if (showRight) {
-          evalWire(x, y, z, d / 2, 0, 0, 0, 1, 0, I * dir2, _tmp);
+          evalWire(x, y, z, d / 2, 0, 0, 0, 1, 0, I2 * dir2, _tmp);
           out.add(_tmp);
         }
         return out;
       };
       const heatMask = (x, y, z) => (showLeft && (x + d / 2) ** 2 + z * z < WIRE_RADIUS * WIRE_RADIUS)
         || (showRight && (x - d / 2) ** 2 + z * z < WIRE_RADIUS * WIRE_RADIUS);
-      return { evalB, inSolid: null, heatMask, d, dir2, showLeft, showRight };
+      return { evalB, inSolid: null, heatMask, d, dir2, I1, I2, showLeft, showRight };
     }
     case 'loop': {
       const I = P.current * (P.direction === '反向' ? -1 : 1), R = P.radius;
@@ -495,25 +553,22 @@ function buildField(sceneId, P) {
       return { evalB, inSolid: null, heatMask, R, I };
     }
     case 'solenoid': {
-      // 有限长螺线管 ≡ 均匀磁化圆柱（安培等效磁化，严格物理等效）：
-      // 磁荷 = 两端等效磁荷盘；管内场 = 磁荷盘库仑场 + 磁化项 M（B=μ₀(H+M)），
-      // 无任何匀强覆盖/渐变层——管内是真实的退磁场修正场（中心近似匀强、端部渐变）
       const currentSign = P.direction.startsWith('反向') ? -1 : 1;
       const I = P.current * currentSign, R = P.radius, L = P.length, N = P.nLoops;
-      const M0 = MU0 * (N / (L * LENGTH_UNIT_M)) * I * TESLA_TO_MICROTESLA;
-      const q = M0 * Math.PI * R * R;
-      const top = buildDisk(L / 2, R, q, 10, 24);
-      const bot = buildDisk(-L / 2, R, -q, 10, 24);
-      const mono = new Float64Array(top.length + bot.length);
-      mono.set(top, 0); mono.set(bot, top.length);
-      const R2 = R * R, Lh = L / 2;
+      const sliceCount = 48;
+      const ampereTurns = (I * N) / sliceCount;
+      const loopYs = new Float64Array(sliceCount);
+      for (let i = 0; i < sliceCount; i++) loopYs[i] = -L / 2 + ((i + 0.5) / sliceCount) * L;
       const evalB = (x, y, z, out) => {
-        evalMonopoles(x, y, z, mono, out);
-        if (x * x + z * z < R2 && Math.abs(y) < Lh) out.y += M0;
+        out.set(0, 0, 0);
+        for (let i = 0; i < loopYs.length; i++) {
+          evalCircularLoopY(x, y, z, loopYs[i], R, ampereTurns, _tmp);
+          out.add(_tmp);
+        }
         return out;
       };
-      const inSolid = (x, y, z) => x * x + z * z < R2 && Math.abs(y) < Lh;
-      return { evalB, inSolid, R, L, N, I, q, M0, currentSign };
+      const heatMask = (x, y, z) => Math.abs(Math.hypot(x, z) - R) < 0.06 && Math.abs(y) <= L / 2 + 0.04;
+      return { evalB, inSolid: null, heatMask, R, L, N, I, currentSign, loopYs, ampereTurns };
     }
   }
 }
@@ -680,33 +735,24 @@ function generateFieldLines(sceneId, P, field) {
 
   switch (sceneId) {
     case 'earth': {
-      // 外部为精确偶极子曲线，内部为均匀磁化球的直线段；两段使用同一个场模型并真实闭合。
       const t = (P.tilt * Math.PI) / 180;
       const mHat = new THREE.Vector3(Math.sin(t), -Math.cos(t), 0);
       const e1 = new THREE.Vector3(Math.cos(t), Math.sin(t), 0);
       const e2 = new THREE.Vector3(0, 0, 1);
       const Re = EARTH_R;
-      const Ls = [1.6, 2.5, 3.8];
+      const Ls = [1.45, 2.05, 2.9, 4.1];
       for (const Lf of Ls) {
         const L = Lf * Re;
         const th0 = Math.asin(Math.sqrt(Re / L));
         for (let k = 0; k < 4; k++) {
           const phi = (k / 4) * Math.PI * 2;
           const d = e1.clone().multiplyScalar(Math.cos(phi)).addScaledVector(e2, Math.sin(phi));
-          const pts = [];
-          const NPT = 96;
-          for (let i = 0; i <= NPT; i++) {
-            const th = th0 + ((Math.PI - 2 * th0) * i) / NPT;
-            const r = L * Math.sin(th) * Math.sin(th);
-            pts.push(new THREE.Vector3()
-              .addScaledVector(mHat, Math.cos(th))
-              .addScaledVector(d, Math.sin(th))
-              .multiplyScalar(r));
-          }
-          const south = pts[pts.length - 1].clone();
-          const north = pts[0].clone();
-          for (let i = 1; i <= 96; i++) pts.push(south.clone().lerp(north, i / 96));
-          push(pts, true, { physicalSeamKink: true });
+          const seed = new THREE.Vector3()
+            .addScaledVector(mHat, Math.cos(th0))
+            .addScaledVector(d, Math.sin(th0))
+            .multiplyScalar(Re + 0.035);
+          const result = runTrace(seed, { dir: 1, maxSteps: 52000, bounds: 17, closeTol: 0.065, tangentThreshold: 0.96, step: 0.024 });
+          if (result.closed) push(result.pts, true);
         }
       }
       break;
@@ -730,7 +776,7 @@ function generateFieldLines(sceneId, P, field) {
             if (traceStats.qualityFailures.length < 4) traceStats.qualityFailures.push(candidateQuality);
           }
         }
-        if (acceptedBases.length >= 2) break;
+        if (acceptedBases.length >= 3) break;
       }
       for (const base of acceptedBases) {
         for (let k = 0; k < 4; k++) {
@@ -740,28 +786,28 @@ function generateFieldLines(sceneId, P, field) {
       }
       break;
     }
-    case 'horseshoe': {
-      const { g, path } = field;
-      const symmetryPlane = new THREE.Vector3(0, 0, 1);
-      const addLine = (seed) => {
-        // 真实磁化体场追踪（数值解）：N 内侧面 → 气隙 → S 内侧面穿入 → 左臂内部沿 M →
-        // 左臂外侧面穿出 → 外部包络大环 → 右臂外侧面穿入 → 右臂内部 → N 内侧面穿出，自然闭合
-        const r = runTrace(seed, { dir: 1, maxSteps: 36000, bounds: 12, closeTol: 0.04, tangentThreshold: 0.97, step: 0.02, planeN: symmetryPlane });
-        if (r.closed) push(r.pts, true);
-      };
-      const offsets = [
-        [0, 0], [0.06, 0], [-0.06, 0], [0.12, 0], [-0.12, 0], [0.19, 0], [-0.19, 0], [0.27, 0], [-0.27, 0],
-      ];
-      for (const [yy, zz] of offsets) {
-        if (yy * yy + zz * zz < path.radius * path.radius * 0.75) {
-          addLine(new THREE.Vector3(g / 2 - 0.045, yy, zz));
-        }
+    case 'bent-wire': {
+      const w = P.width / 2, h = P.height / 2;
+      const seeds = [];
+      for (const radius of [0.14, 0.22, 0.32, 0.45, 0.62]) {
+        seeds.push(new THREE.Vector3(-w + radius, 0, 0));
+        seeds.push(new THREE.Vector3(-w, 0, radius));
+        seeds.push(new THREE.Vector3(w - radius, 0, 0));
+        seeds.push(new THREE.Vector3(w, 0, radius));
+      }
+      for (const radius of [0.16, 0.26, 0.38, 0.54]) {
+        seeds.push(new THREE.Vector3(0, h - radius, 0));
+        seeds.push(new THREE.Vector3(0, h, radius));
+      }
+      for (const seed of seeds) {
+        const forward = runTrace(seed, { dir: 1, maxSteps: 48000, bounds: 15, closeTol: 0.065, tangentThreshold: 0.95, step: 0.026 });
+        if (forward.closed) push(forward.pts, true);
       }
       break;
     }
     case 'straight-wire': {
       // 精确同心圆（1/r 疏密自然呈现）
-      const radii = [0.55, 1.0, 1.6, 2.3, 3.1];
+      const radii = [0.45, 0.75, 1.1, 1.6, 2.25, 3.1];
       for (const hy of [-2.2, 0, 2.2]) {
         for (const r of radii) {
           const pts = [];
@@ -781,11 +827,12 @@ function generateFieldLines(sceneId, P, field) {
       const showLeft = P.display !== '仅右导线';
       const showRight = P.display !== '仅左导线';
       const singleMode = !showLeft || !showRight;
+      const balanced = Math.abs(P.current1 - P.current2) < 1e-9;
 
       if (singleMode) {
         // 单根导线：同心圆（与直导线一致，仅圆心偏移）
         const px = showLeft ? -a : a;
-        const radii = [0.4, 0.85, 1.4, 2.1, 2.9];
+        const radii = [0.35, 0.65, 1.0, 1.45, 2.1, 2.9];
         for (const hy of [-1.7, 0, 1.7]) {
           for (const r of radii) {
             const pts = [];
@@ -799,7 +846,7 @@ function generateFieldLines(sceneId, P, field) {
         break;
       }
 
-      if (!co) {
+      if (!co && balanced) {
         // 反向电流——精确解：磁感线为阿波罗尼奥斯圆（|r₂|/|r₁| = k）
         // 全部完整渲染闭合圆；k 太接近 1（如 1.18）的圆半径趋于无穷、
         // 视觉上接近直线且大部分超出画面，物理上等价于中垂面直线，
@@ -827,15 +874,15 @@ function generateFieldLines(sceneId, P, field) {
           push(orientAlongB(separatrix, evalB), false);
         }
       } else {
-        // 同向电流——数值追踪（小步长 + 大步数保证自然闭合、无直线段）
+        // General unequal-current case: integrate the actual superposed field.
         for (const hy of [-1.7, 0, 1.7]) {
           const seeds = [];
           for (const px of [-a, a]) {
-            for (const rho of [0.28, 0.6]) {
+            for (const rho of [0.24, 0.48, 0.82]) {
               seeds.push(new THREE.Vector3(px + (px < 0 ? -rho : rho), hy, 0));
             }
           }
-          for (const z0 of [0.95 * a, 1.6 * a, 2.4 * a]) seeds.push(new THREE.Vector3(0, hy, z0));
+          for (const z0 of [0.72 * a, 1.15 * a, 1.75 * a, 2.7 * a]) seeds.push(new THREE.Vector3(0, hy, z0));
           for (const s of seeds) {
             const res = runTrace(s, { dir: 1, maxSteps: 36000, bounds: 9, closeTol: 0.065, planeN, step: 0.028 });
             if (res.closed && res.pts.length > 20) push(res.pts, true);
@@ -855,6 +902,7 @@ function generateFieldLines(sceneId, P, field) {
       // 近线小环使用更小步长与 closeTol，同时检查起终切向，避免提前误判闭合。
       const allSeeds = [
         { f: 0.45, side: null, step: 0.018, max: 70000, closeTol: 0.045 },
+        { f: 0.78, side: null, step: 0.020, max: 70000, closeTol: 0.05 },
         { f: 0.18, side: 'in', step: 0.012, max: 8000, closeTol: 0.03 },
         { f: 0.18, side: 'out', step: 0.012, max: 8000, closeTol: 0.03 },
         { f: 1.50, side: null, step: 0.025, max: 50000, closeTol: 0.06 },
@@ -877,40 +925,39 @@ function generateFieldLines(sceneId, P, field) {
     }
     case 'solenoid': {
       const R = P.radius, L = P.length, Lh = L / 2;
-      const radialFractions = [0.82, 0.88, 0.94, 0.98];
-      const radii = radialFractions.map((f) => f * R);
-      const northSign = field.M0 >= 0 ? 1 : -1;
+      const radii = [0.18, 0.38, 0.60, 0.80, 0.92].map((f) => f * R);
+      const northSign = field.I >= 0 ? 1 : -1;
       const baseAngle = Math.atan2(21, 16) + Math.PI / 2;
       const planeN = new THREE.Vector3(-Math.sin(baseAngle), 0, Math.cos(baseAngle));
       const acceptedBaseLines = [];
       for (const radius of radii) {
-        const family = [];
         for (const radialSign of [-1, 1]) {
           const seed = new THREE.Vector3(
             radius * Math.cos(baseAngle) * radialSign,
             northSign * (Lh + 0.12),
             radius * Math.sin(baseAngle) * radialSign,
           );
-          const r = runTrace(seed, { dir: 1, maxSteps: 32000, bounds: 20, closeTol: 0.06, step: 0.025, planeN });
-          if (!r.closed) continue;
-          const candidateQuality = assessLineQuality(decimateLine(r.pts, true), evalB, true);
-          if (candidateQuality.pass) family.push(r.pts);
-          else {
-            traceStats.qualityRejected++;
-            if (traceStats.qualityFailures.length < 4) traceStats.qualityFailures.push(candidateQuality);
+          const forward = runTrace(seed, { dir: 1, maxSteps: 42000, bounds: 22, closeTol: 0.06, step: 0.025, planeN });
+          if (forward.closed) {
+            const candidateQuality = assessLineQuality(decimateLine(forward.pts, true), evalB, true);
+            if (candidateQuality.pass) acceptedBaseLines.push({ pts: forward.pts, closed: true });
+            else {
+              traceStats.qualityRejected++;
+              if (traceStats.qualityFailures.length < 4) traceStats.qualityFailures.push(candidateQuality);
+            }
           }
-        }
-        if (family.length === 2) {
-          acceptedBaseLines.push(...family);
-          break;
         }
       }
       const yAxis = new THREE.Vector3(0, 1, 0);
-      for (const delta of [-0.48, -0.16, 0.16, 0.48]) {
+      for (const delta of [-0.38, 0, 0.38]) {
         for (const base of acceptedBaseLines) {
-          push(base.map((point) => point.clone().applyAxisAngle(yAxis, delta)), true);
+          push(base.pts.map((point) => point.clone().applyAxisAngle(yAxis, delta)), true);
         }
       }
+      const axisExtent = Math.max(8.5, L / 2 + 4.5 * R);
+      const axis = [];
+      for (let i = 0; i <= 180; i++) axis.push(new THREE.Vector3(0, -axisExtent + (2 * axisExtent * i) / 180, 0));
+      push(orientAlongB(axis, evalB), false);
       break;
     }
   }
@@ -935,19 +982,20 @@ function generateFieldLines(sceneId, P, field) {
 }
 
 /* ==================== 箭头（稀疏、精巧） ==================== */
-function collectArrowSpecs(lines) {
+function collectArrowSpecs(lines, options = {}) {
   const specs = [];
   for (const pts of lines) {
     const n = pts.length;
     if (n < 8) continue;
-    // 短线 1 个在 25%；中线 2 个在 15%/40%；长线 4 个在 8%/22%/36%/50%（长外部线箭头更密）
-    const fracs = n > 130 ? [0.1, 0.3, 0.5] : n > 45 ? [0.15, 0.40] : [0.25];
+    const defaults = n > 130 ? [0.24, 0.62] : [0.36];
+    const fracs = (options.fractions || defaults).slice(0, options.maxPerLine || 2);
     for (const f of fracs) {
       const i = Math.floor(n * f);
       const i0 = Math.max(0, i - 1), i1 = Math.min(n - 1, i + 1);
       const tan = new THREE.Vector3().subVectors(pts[i1], pts[i0]);
       if (tan.lengthSq() < 1e-10) continue;
-      specs.push({ pos: pts[i], dir: tan.normalize() });
+      const scale = options.scaleAt ? options.scaleAt(pts[i]) : 1;
+      specs.push({ pos: pts[i], dir: tan.normalize(), scale });
     }
   }
   return specs;
@@ -963,11 +1011,25 @@ function makeArrowMesh(specs, color, scale = 1) {
   specs.forEach((s, i) => {
     dummy.position.copy(s.pos);
     dummy.quaternion.setFromUnitVectors(up, s.dir);
+    dummy.scale.setScalar(s.scale || 1);
     dummy.updateMatrix();
     mesh.setMatrixAt(i, dummy.matrix);
   });
   mesh.instanceMatrix.needsUpdate = true;
   return mesh;
+}
+
+function fieldArrowOptions(sceneId, params) {
+  if (sceneId !== 'loop') return {};
+  const radius = params.radius;
+  return {
+    maxPerLine: 1,
+    fractions: [0.34],
+    scaleAt: (point) => {
+      const distance = Math.hypot(Math.hypot(point.x, point.z) - radius, point.y);
+      return 0.52 + 0.48 * Math.min(1, distance / Math.max(0.45, radius * 0.42));
+    },
+  };
 }
 
 function makeWideLine(points, color = PAL.line, width = 2.3, dashed = false) {
@@ -1235,6 +1297,16 @@ function magnetMat(color) {
   return new THREE.MeshPhongMaterial({ color, transparent: true, opacity: 0.58, shininess: 30, depthWrite: false });
 }
 
+function addCylinderSegment(group, a, b, material, radius = 0.06) {
+  const direction = b.clone().sub(a);
+  const length = direction.length();
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 12), material);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  group.add(mesh);
+  return mesh;
+}
+
 function createSources(sceneId, P) {
   const g = new THREE.Group();
   const iron = new THREE.MeshPhongMaterial({ color: 0xaeb8c0, transparent: true, opacity: 0.6, shininess: 40, depthWrite: false });
@@ -1274,27 +1346,23 @@ function createSources(sceneId, P) {
       makeLabel(g, 'S', new THREE.Vector3(0.75, -L / 2 - 0.3, 0), PAL.S, 0.55);
       break;
     }
-    case 'horseshoe': {
-      const path = buildHorseshoePath(P.gap);
-      const body = new THREE.Mesh(
-        new THREE.TubeGeometry(path.curve, 180, path.radius, 20, false),
-        new THREE.MeshPhongMaterial({ color: 0xaeb8c0, transparent: true, opacity: 0.72, shininess: 42, depthWrite: false }),
-      );
-      body.renderOrder = 2;
-      g.add(body);
-
-      const capGeom = new THREE.CylinderGeometry(path.radius * 1.02, path.radius * 1.02, 0.13, 28);
-      const addPoleCap = (x, color) => {
-        const cap = new THREE.Mesh(capGeom, magnetMat(color));
-        cap.position.set(x, 0, 0);
-        cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0));
-        cap.renderOrder = 3;
-        g.add(cap);
-      };
-      addPoleCap(-P.gap / 2 - 0.065, PAL.S);
-      addPoleCap(P.gap / 2 + 0.065, PAL.N);
-      makeLabel(g, 'S', new THREE.Vector3(-P.gap / 2 - 0.22, path.radius + 0.40, 0), PAL.S, 0.54);
-      makeLabel(g, 'N', new THREE.Vector3(P.gap / 2 + 0.22, path.radius + 0.40, 0), PAL.N, 0.54);
+    case 'bent-wire': {
+      const points = buildBentWirePath(P.width, P.height);
+      const visibleMat = new THREE.MeshPhongMaterial({ color: PAL.wire, shininess: 62 });
+      const returnMat = new THREE.MeshPhongMaterial({ color: 0x7c8992, transparent: true, opacity: 0.34, shininess: 20, depthWrite: false });
+      for (let i = 0; i < 3; i++) addCylinderSegment(g, points[i], points[i + 1], visibleMat, 0.065);
+      for (let i = 3; i < points.length - 1; i++) addCylinderSegment(g, points[i], points[i + 1], returnMat, 0.042);
+      const sign = P.direction === '左侧向下' ? -1 : 1;
+      for (const index of [0, 1, 2]) {
+        const a = points[index], b = points[index + 1];
+        const dir = b.clone().sub(a).normalize().multiplyScalar(sign);
+        const mid = a.clone().lerp(b, 0.5).addScaledVector(dir, -0.42);
+        addCurrentCone(g, mid, dir, 0.13, 0.32, 0.55);
+      }
+      const returnDir = points[5].clone().sub(points[4]).normalize().multiplyScalar(sign);
+      addCurrentCone(g, points[4].clone().lerp(points[5], 0.5).addScaledVector(returnDir, -0.35), returnDir, 0.10, 0.25, 0.42);
+      makeLabel(g, 'I', new THREE.Vector3(-P.width / 2 - 0.42, 0.6, 0), PAL.current, 0.48);
+      makeLabel(g, '远置回流线', new THREE.Vector3(0, -P.height / 2 - 0.48, points[4].z), 0x66727c, 0.38);
       break;
     }
     case 'straight-wire': {
@@ -1324,6 +1392,11 @@ function createSources(sceneId, P) {
           addCurrentCone(g, new THREE.Vector3(px, yy, 0), new THREE.Vector3(0, s, 0));
         }
         makeLabel(g, i === 0 ? 'I₁' : 'I₂', new THREE.Vector3(px + 0.42, 3.8, 0), PAL.current, 0.5);
+      }
+      if (showLeft && showRight) {
+        const origin = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 8), new THREE.MeshBasicMaterial({ color: 0x2c3840 }));
+        g.add(origin);
+        makeLabel(g, 'O', new THREE.Vector3(0.28, 0.30, 0), 0x2c3840, 0.34);
       }
       break;
     }
@@ -1463,6 +1536,11 @@ function onCanvasClick(e) {
     if (raycaster.ray.intersectPlane(plane, hp)) point = hp;
   }
   if (point) {
+    if (currentScene.id === 'two-wires') {
+      if (Math.abs(point.x) < 0.025) point.x = 0;
+      if (Math.abs(point.y) < 0.025) point.y = 0;
+      if (Math.abs(point.z) < 0.025) point.z = 0;
+    }
     currentField.evalB(point.x, point.y, point.z, _b);
     const B = _b.clone();
     showPickerArrow(point, B);
@@ -1514,9 +1592,9 @@ function onCanvasMove(e) {
   // 画布中心可能落在半像素上；一像素内吸附到对称轴，保证中点零场演示与坐标读数一致。
   if (Math.abs(hp.x) < 0.025) hp.x = 0;
   if (Math.abs(hp.z) < 0.025) hp.z = 0;
-  const f = currentField, I = currentParams.current, d = f.d, dir2 = f.dir2;
-  evalWire(hp.x, hp.y, hp.z, -d / 2, 0, 0, 0, 1, 0, I, _b1);     // 左导线贡献 B₁
-  evalWire(hp.x, hp.y, hp.z, d / 2, 0, 0, 0, 1, 0, I * dir2, _b2); // 右导线贡献 B₂
+  const f = currentField, d = f.d, dir2 = f.dir2;
+  evalWire(hp.x, hp.y, hp.z, -d / 2, 0, 0, 0, 1, 0, f.I1, _b1);     // 左导线贡献 B₁
+  evalWire(hp.x, hp.y, hp.z, d / 2, 0, 0, 0, 1, 0, f.I2 * dir2, _b2); // 右导线贡献 B₂
   _bt.copy(_b1).add(_b2);                                          // 合成 B = B₁ + B₂
   showVectorArrows(hp, _b1, _b2, _bt);
   updateVectorReadout(hp, _b1, _b2, _bt);
@@ -1587,7 +1665,7 @@ function updateVectorReadout(p, b1, b2, bt) {
       <div style="color:#2367a3;font-weight:700">B₁ = (${b1.x.toFixed(2)}, ${b1.y.toFixed(2)}, ${b1.z.toFixed(2)}) μT</div>
       <div style="color:#2f9e44;font-weight:700">B₂ = (${b2.x.toFixed(2)}, ${b2.y.toFixed(2)}, ${b2.z.toFixed(2)}) μT</div>
       <div style="color:#d13d3d;font-weight:700">B = B₁+B₂ = (${bt.x.toFixed(2)}, ${bt.y.toFixed(2)}, ${bt.z.toFixed(2)}) μT</div>
-      <div style="margin-top:3px">P(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})</div>`;
+      <div style="margin-top:3px">P(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})</div>`;
   }
 }
 
@@ -1666,10 +1744,13 @@ function updateVisualization() {
     for (let i = 0; i < gen.lines.length; i++) {
       fieldGroup.add(makeWideLine(gen.lines[i], PAL.line, gen.closedFlags[i] ? 2.25 : 2.0, !gen.closedFlags[i]));
     }
-    const arrows = makeArrowMesh(collectArrowSpecs(gen.lines), PAL.line, 1);
+    const arrowSpecs = collectArrowSpecs(gen.lines, fieldArrowOptions(currentScene.id, currentParams));
+    document.body.dataset.fieldArrows = String(arrowSpecs.length);
+    const arrows = makeArrowMesh(arrowSpecs, PAL.line, 1);
     if (arrows) arrowGroup.add(arrows);
   } else {
     currentStats = { ...currentStats, closed: 0, expectedOpen: 0, total: 0, quality: null };
+    document.body.dataset.fieldArrows = '0';
     document.body.dataset.traceStats = '{}';
     document.body.dataset.lineQuality = '{}';
   }
@@ -1681,7 +1762,7 @@ function updateVisualization() {
     for (const pts of projected) {
       sectionLineGroup.add(makeWideLine(pts, PAL.line, 2.45));
     }
-    const arrows = makeArrowMesh(collectArrowSpecs(projected), PAL.line, 0.85);
+    const arrows = makeArrowMesh(collectArrowSpecs(projected, fieldArrowOptions(currentScene.id, currentParams)), PAL.line, 0.85);
     if (arrows) sectionLineGroup.add(arrows);
     document.body.dataset.sectionLines = String(projected.length);
   } else {
@@ -1709,6 +1790,7 @@ function applyVisibility() {
   if (separatrix) {
     const showSeparatrix = currentScene?.id === 'two-wires'
       && currentParams.direction === '反向'
+      && Math.abs(currentParams.current1 - currentParams.current2) < 1e-9
       && currentParams.display === '合磁场'
       && !SECTION.only;
     separatrix.style.display = showSeparatrix ? 'flex' : 'none';
@@ -1716,14 +1798,16 @@ function applyVisibility() {
 }
 
 function updateLegend(sceneId) {
-  const currentScenes = new Set(['straight-wire', 'two-wires', 'loop', 'solenoid']);
-  const poleScenes = new Set(['earth', 'bar-magnet', 'horseshoe', 'loop', 'solenoid']);
+  const currentScenes = new Set(['bent-wire', 'straight-wire', 'two-wires', 'loop', 'solenoid']);
+  const poleScenes = new Set(['earth', 'bar-magnet', 'loop', 'solenoid']);
   const currentItem = document.getElementById('legend-current');
   const northItem = document.getElementById('legend-n');
   const southItem = document.getElementById('legend-s');
+  const returnItem = document.getElementById('legend-return');
   if (currentItem) currentItem.style.display = currentScenes.has(sceneId) ? 'flex' : 'none';
   if (northItem) northItem.style.display = poleScenes.has(sceneId) ? 'flex' : 'none';
   if (southItem) southItem.style.display = poleScenes.has(sceneId) ? 'flex' : 'none';
+  if (returnItem) returnItem.style.display = sceneId === 'bent-wire' ? 'flex' : 'none';
 }
 
 function scheduleUpdate() {
@@ -2071,7 +2155,7 @@ function updateConsole() {
     if (STATE.locked) status.textContent = '预测模式 · 数值诊断已隐藏';
     else if (!currentStats.total) status.textContent = '未生成可验证的磁感线';
     else if (currentStats.closed + currentStats.expectedOpen === currentStats.total) {
-      const suffix = currentStats.expectedOpen ? `，${currentStats.expectedOpen} 条分界线延伸到视窗外` : '';
+      const suffix = currentStats.expectedOpen ? `，${currentStats.expectedOpen} 条延伸到视窗边界` : '';
       status.textContent = `轨迹几何与场方向检查通过 · ${currentStats.closed} 条闭合${suffix}`;
     } else status.textContent = `轨迹检查未通过 · ${currentStats.closed}/${currentStats.total}`;
   }
@@ -2086,8 +2170,9 @@ function updateSampleReadout(pos, B) {
   const uy = m > 1e-9 ? (B.y / m).toFixed(2) : '0.00';
   const uz = m > 1e-9 ? (B.z / m).toFixed(2) : '0.00';
   if (el) {
+    const coord = (value) => (Math.abs(value) < 0.0005 ? '0.00' : value.toFixed(2));
     el.innerHTML = `
-      <div>P(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}) · 1单位=10 cm</div>
+      <div>P(${coord(pos.x)}, ${coord(pos.y)}, ${coord(pos.z)}) · 1单位=10 cm</div>
       <strong>|B| = ${formatFieldValue(m)}</strong>
       <div>B = (${component(B.x)}, ${component(B.y)}, ${component(B.z)}) ${display.unit}</div>
       <div>方向 → (${ux}, ${uy}, ${uz})</div>`;
@@ -2221,8 +2306,35 @@ function runPhysicsValidation() {
   const earthSurface = sampleModel('earth', { tilt: 0, moment: 30 }, [EARTH_R, 0, 0]).magnitude;
   add('earth.equatorial_surface_value', earthSurface, 30, 0.002, 'UI value is the equatorial surface field in μT');
   const earthInterior = sampleModel('earth', { tilt: 0, moment: 30 }, [0, 0, 0]);
-  add('earth.uniform_interior_value', earthInterior.magnitude, 60, 0.002);
-  addCondition('earth.uniform_interior_direction', earthInterior.B[1] < 0, earthInterior.B);
+  add('earth.core_center_value', earthInterior.magnitude, 150, 0.002);
+  addCondition('earth.core_center_direction', earthInterior.B[1] < 0, earthInterior.B);
+  const earthInsideSurface = sampleModel('earth', { tilt: 0, moment: 30 }, [EARTH_R - 1e-4, 0, 0]);
+  const earthOutsideSurface = sampleModel('earth', { tilt: 0, moment: 30 }, [EARTH_R + 1e-4, 0, 0]);
+  addCondition('earth.surface_vector_continuity', earthInsideSurface.B.every((v, i) => Math.abs(v - earthOutsideSurface.B[i]) < 0.02),
+    [earthInsideSurface.B, earthOutsideSurface.B]);
+  const divPoint = [0.7, -0.5, 0.4], dh = 1e-3;
+  let divergence = 0;
+  for (let axis = 0; axis < 3; axis++) {
+    const lo = divPoint.slice(), hi = divPoint.slice();
+    lo[axis] -= dh; hi[axis] += dh;
+    divergence += (sampleModel('earth', { tilt: 11.5, moment: 30 }, hi).B[axis]
+      - sampleModel('earth', { tilt: 11.5, moment: 30 }, lo).B[axis]) / (2 * dh);
+  }
+  addCondition('earth.core_divergence_free', Math.abs(divergence) < 0.01, divergence);
+
+  const bentDefaults = { current: 50, width: 4, height: 5.5, direction: '左侧向上' };
+  const bentRadius = 0.22;
+  const bentLocal = sampleModel('bent-wire', bentDefaults, [-bentDefaults.width / 2 + bentRadius, 0, 0]);
+  add('bent_wire.local_straight_limit', bentLocal.magnitude, (2 * bentDefaults.current) / bentRadius, 0.12,
+    'Near a long visible segment, the complete circuit approaches the infinite-wire result');
+  const bentHalfCurrent = sampleModel('bent-wire', { ...bentDefaults, current: 25 }, [-1.3, 0.2, 0.35]);
+  const bentFullCurrent = sampleModel('bent-wire', bentDefaults, [-1.3, 0.2, 0.35]);
+  add('bent_wire.current_linearity', bentFullCurrent.magnitude / bentHalfCurrent.magnitude, 2, 0.003);
+  const bentReverse = sampleModel('bent-wire', { ...bentDefaults, direction: '左侧向下' }, [-1.3, 0.2, 0.35]);
+  addCondition('bent_wire.reverse_direction', bentFullCurrent.B.every((v, i) => Math.abs(v + bentReverse.B[i]) < 1e-6),
+    [bentFullCurrent.B, bentReverse.B]);
+  const bentPath = buildBentWirePath(bentDefaults.width, bentDefaults.height);
+  addCondition('bent_wire.closed_current_path', bentPath[0].distanceTo(bentPath[bentPath.length - 1]) < 1e-12, bentPath.length);
 
   const wireR1 = sampleModel('straight-wire', { current: 50, direction: '向上（+Y）' }, [1, 0, 0]).magnitude;
   const wireR2 = sampleModel('straight-wire', { current: 50, direction: '向上（+Y）' }, [2, 0, 0]).magnitude;
@@ -2238,12 +2350,19 @@ function runPhysicsValidation() {
   const wireOutsideEdge = sampleModel('straight-wire', { current: 50, direction: '向上（+Y）' }, [WIRE_RADIUS * 1.001, 0, 0]).magnitude;
   addCondition('wire.surface_continuity', Math.abs(wireInsideEdge - wireOutsideEdge) / wireSurface < 0.005, [wireInsideEdge, wireOutsideEdge]);
 
-  const twoSame = sampleModel('two-wires', { current: 50, spacing: 3, direction: '同向' }, [0, 0, 0]);
+  const twoSame = sampleModel('two-wires', { current1: 50, current2: 50, spacing: 3, direction: '同向' }, [0, 0, 0]);
   add('two_wires.same_midpoint_zero', twoSame.magnitude, 0, 1e-6);
-  const twoOpp = sampleModel('two-wires', { current: 50, spacing: 3, direction: '反向' }, [0, 0, 0]);
+  const twoOpp = sampleModel('two-wires', { current1: 50, current2: 50, spacing: 3, direction: '反向' }, [0, 0, 0]);
   addCondition('two_wires.opposite_midpoint_adds', twoOpp.B[2] < 0 && twoOpp.magnitude > 100, twoOpp.B);
-  const singleLeftSame = sampleModel('two-wires', { current: 50, spacing: 3, direction: '同向', display: '仅左导线' }, [-0.5, 0, 0]);
-  const singleLeftOpp = sampleModel('two-wires', { current: 50, spacing: 3, direction: '反向', display: '仅左导线' }, [-0.5, 0, 0]);
+  const unequalParams = { current1: 30, current2: 70, spacing: 3, direction: '同向' };
+  const unequalZeroX = (unequalParams.spacing / 2) * (unequalParams.current1 - unequalParams.current2)
+    / (unequalParams.current1 + unequalParams.current2);
+  const unequalZero = sampleModel('two-wires', unequalParams, [unequalZeroX, 0, 0]);
+  addCondition('two_wires.unequal_zero_point', unequalZero.magnitude < 1e-9, unequalZero.B);
+  const unequalMid = sampleModel('two-wires', unequalParams, [0, 0, 0]);
+  addCondition('two_wires.unequal_midpoint_nonzero', unequalMid.magnitude > 1, unequalMid.B);
+  const singleLeftSame = sampleModel('two-wires', { current1: 35, current2: 80, spacing: 3, direction: '同向', display: '仅左导线' }, [-0.5, 0, 0]);
+  const singleLeftOpp = sampleModel('two-wires', { current1: 35, current2: 80, spacing: 3, direction: '反向', display: '仅左导线' }, [-0.5, 0, 0]);
   addCondition('two_wires.single_mode_direction_invariant', singleLeftSame.B.every((v, i) => Math.abs(v - singleLeftOpp.B[i]) < 1e-9), [singleLeftSame.B, singleLeftOpp.B]);
 
   const loop = sampleModel('loop', { current: 50, radius: 2, direction: '正向' }, [0, 0, 0]);
@@ -2266,35 +2385,38 @@ function runPhysicsValidation() {
   add('bar.mirror_symmetry_magnitude', barLeft.magnitude / barRight.magnitude, 1, 0.002);
   addCondition('bar.equatorial_direction', barLeft.B[1] < 0 && barRight.B[1] < 0, [barLeft.B, barRight.B]);
 
-  const horseGap = sampleModel('horseshoe', { gap: 0.8, strength: 150 }, [0, 0, 0]);
-  const horseRight = sampleModel('horseshoe', { gap: 0.8, strength: 150 }, [1.4, -1.2, 0]);
-  const horseLeft = sampleModel('horseshoe', { gap: 0.8, strength: 150 }, [-1.4, -1.2, 0]);
-  const horseBottom = sampleModel('horseshoe', { gap: 0.8, strength: 150 }, [0, -2.2, 0]);
-  addCondition('horseshoe.u_path_direction', horseGap.B[0] < 0 && horseRight.B[1] > 0 && horseLeft.B[1] < 0 && horseBottom.B[0] > 0,
-    { gap: horseGap.B, right: horseRight.B, left: horseLeft.B, bottom: horseBottom.B });
-  const horseSamples = [[0, 0, 0], [0.12, 0, 0], [-0.12, 0, 0], [0, 0.10, 0], [0, -0.10, 0], [0, 0, 0.10]]
-    .map((point) => sampleModel('horseshoe', { gap: 0.8, strength: 150 }, point));
-  const horseMin = Math.min(...horseSamples.map((s) => s.magnitude));
-  const horseMax = Math.max(...horseSamples.map((s) => s.magnitude));
-  const horseDir = horseSamples.map((s) => -s.B[0] / s.magnitude);
-  addCondition('horseshoe.central_region_uniformity', horseMax / horseMin < 1.25 && Math.min(...horseDir) > 0.97,
-    { ratio: horseMax / horseMin, minDirectionCosine: Math.min(...horseDir) });
-
   const solenoidDefaults = { current: 50, radius: 1.5, nLoops: 160, length: 5, direction: '正向（N 在 +Y）' };
   const solenoid = sampleModel('solenoid', solenoidDefaults, [0, 0, 0]);
   const idealFinite = MU0 * (160 / (5 * LENGTH_UNIT_M)) * 50 * TESLA_TO_MICROTESLA * 5 / Math.sqrt(25 + 9);
-  add('solenoid.center_finite_formula', solenoid.magnitude, idealFinite, 0.035);
+  add('solenoid.center_finite_formula', solenoid.magnitude, idealFinite, 0.008);
   addCondition('solenoid.internal_to_north', solenoid.B[1] > 0, solenoid.B);
   const solenoidHalfCurrent = sampleModel('solenoid', { ...solenoidDefaults, current: 25 }, [0, 0, 0]);
   add('solenoid.current_linearity', solenoid.magnitude / solenoidHalfCurrent.magnitude, 2, 0.002);
   const solenoidReverse = sampleModel('solenoid', { ...solenoidDefaults, direction: '反向（N 在 −Y）' }, [0, 0, 0]);
   addCondition('solenoid.reverse_direction', solenoidReverse.B[1] < 0 && Math.abs(solenoidReverse.magnitude / solenoid.magnitude - 1) < 0.002, solenoidReverse.B);
   const solenoidMiddle = sampleModel('solenoid', solenoidDefaults, [0, 0.5, 0]);
+  const axisExpected = (y) => {
+    const L = solenoidDefaults.length, R = solenoidDefaults.radius;
+    const n = solenoidDefaults.nLoops / (L * LENGTH_UNIT_M);
+    const upper = (y + L / 2) / Math.sqrt(R * R + (y + L / 2) ** 2);
+    const lower = (y - L / 2) / Math.sqrt(R * R + (y - L / 2) ** 2);
+    return (MU0 * n * solenoidDefaults.current * TESLA_TO_MICROTESLA / 2) * (upper - lower);
+  };
   const solenoidNearEnd = sampleModel('solenoid', solenoidDefaults, [0, 2.0, 0]);
+  const solenoidEnd = sampleModel('solenoid', solenoidDefaults, [0, 2.5, 0]);
+  const solenoidEndInside = sampleModel('solenoid', solenoidDefaults, [0, 2.5 - 1e-3, 0]);
+  const solenoidEndOutside = sampleModel('solenoid', solenoidDefaults, [0, 2.5 + 1e-3, 0]);
+  const solenoidOutside = sampleModel('solenoid', solenoidDefaults, [0, 3.25, 0]);
   addCondition('solenoid.central_region_nearly_uniform', Math.abs(solenoidMiddle.magnitude / solenoid.magnitude - 1) < 0.08,
     [solenoid.magnitude, solenoidMiddle.magnitude]);
-  addCondition('solenoid.end_effect_visible', solenoidNearEnd.magnitude < solenoid.magnitude * 0.85,
-    [solenoid.magnitude, solenoidNearEnd.magnitude]);
+  add('solenoid.near_end_axis_formula', solenoidNearEnd.B[1], axisExpected(2.0), 0.012);
+  add('solenoid.mouth_axis_formula', solenoidEnd.B[1], axisExpected(2.5), 0.012);
+  addCondition('solenoid.mouth_continuity', solenoidEndInside.B[1] > 0 && solenoidEndOutside.B[1] > 0
+    && Math.abs(solenoidEndInside.B[1] - solenoidEndOutside.B[1]) / solenoidEnd.magnitude < 0.012,
+    [solenoidEndInside.B[1], solenoidEnd.B[1], solenoidEndOutside.B[1]]);
+  addCondition('solenoid.axis_monotonic_to_mouth', solenoid.magnitude > solenoidNearEnd.magnitude
+    && solenoidNearEnd.magnitude > solenoidEnd.magnitude && solenoidEnd.magnitude > solenoidOutside.magnitude,
+    [solenoid.magnitude, solenoidNearEnd.magnitude, solenoidEnd.magnitude, solenoidOutside.magnitude]);
 
   for (const def of SCENES) {
     const base = Object.fromEntries(def.params.map((param) => [param.id, param.val]));
@@ -2323,7 +2445,7 @@ function runPhysicsValidation() {
 }
 
 function runGeometryValidation(sceneIds = SCENES.map((sceneDef) => sceneDef.id)) {
-  const minimumLines = { earth: 12, 'bar-magnet': 8, horseshoe: 5, 'straight-wire': 15, 'two-wires': 18, loop: 12, solenoid: 8 };
+  const minimumLines = { earth: 14, 'bar-magnet': 10, 'bent-wire': 10, 'straight-wire': 18, 'two-wires': 18, loop: 16, solenoid: 12 };
   const checks = [];
   const started = performance.now();
   const selected = new Set(sceneIds);
@@ -2333,12 +2455,14 @@ function runGeometryValidation(sceneIds = SCENES.map((sceneDef) => sceneDef.id))
   addCase('earth.tilt_max', 'earth', { tilt: 25 });
   addCase('bar.length_min', 'bar-magnet', { length: 2 });
   addCase('bar.length_max', 'bar-magnet', { length: 3.5 });
-  addCase('horseshoe.gap_min', 'horseshoe', { gap: 0.4 });
-  addCase('horseshoe.gap_max', 'horseshoe', { gap: 1.6 });
+  addCase('bent_wire.compact', 'bent-wire', { width: 2.5, height: 4 });
+  addCase('bent_wire.large_reverse', 'bent-wire', { width: 5, height: 7, direction: '左侧向下' });
   addCase('wire.reverse', 'straight-wire', { direction: '向下（−Y）' });
   addCase('two_wires.opposite', 'two-wires', { direction: '反向' });
   addCase('two_wires.single_right', 'two-wires', { direction: '反向', display: '仅右导线' });
   addCase('two_wires.spacing_max', 'two-wires', { spacing: 5 });
+  addCase('two_wires.unequal_same', 'two-wires', { current1: 25, current2: 80, direction: '同向' });
+  addCase('two_wires.unequal_opposite', 'two-wires', { current1: 80, current2: 25, direction: '反向' });
   addCase('loop.radius_min', 'loop', { radius: 1 });
   addCase('loop.radius_max_reverse', 'loop', { radius: 4, direction: '反向' });
   addCase('solenoid.reverse', 'solenoid', { direction: '反向（N 在 −Y）' });
