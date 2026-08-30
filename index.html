@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>磁场 AI 可视化实验室</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f5f7f8;
+  --panel: #ffffff;
+  --ink: #172026;
+  --muted: #66727c;
+  --line: #dce3e8;
+  --soft: #edf2f5;
+  --brand: #6b1f2b;
+  --brand-dark: #48111b;
+  --brand-tint: #f8edf0;
+  --accent: #0f766e;
+  --accent-dark: #0b5f59;
+  --accent-tint: #e8f5f3;
+  --shadow: 0 18px 48px rgba(23, 32, 38, 0.10);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--ink); font-family: var(--font);
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+
+/* ---------- topbar ---------- */
+.topbar {
+  height: 62px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--line); backdrop-filter: blur(18px);
+  position: relative; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--brand); color: #fff; flex: 0 0 auto;
+}
+.brand-mark svg { width: 20px; height: 20px; }
+.brand-subtitle { font-size: 17px; font-weight: 700; letter-spacing: 0.02em; }
+.brand-subtitle small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 1px; letter-spacing: 0.06em; }
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+.fps { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+.mode-switch { display: inline-flex; padding: 2px; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; }
+.mode-switch button { min-width: 52px; height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--muted); border-radius: 6px; font-size: 12px; }
+.mode-switch button[aria-pressed="true"] { background: var(--brand); color: #fff; font-weight: 600; }
+.lesson-tag { color: var(--brand-dark); font-size: 13px; font-weight: 700; background: #f3e8eb; border: 1px solid #ead2d8; padding: 7px 12px; border-radius: 2px; }
+
+/* ---------- shell ---------- */
+.shell {
+  display: grid; grid-template-columns: 292px minmax(0, 1fr) 336px;
+  gap: 16px; padding: 16px; height: calc(100dvh - 62px);
+}
+.panel {
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
+  border-radius: 4px; padding: 18px; overflow-y: auto; min-height: 0;
+}
+.panel::-webkit-scrollbar { width: 8px; }
+.panel::-webkit-scrollbar-thumb { background: #cdd6dd; border-radius: 4px; }
+.panel section + section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+h2 { margin-bottom: 12px; font-size: 14px; color: #2c3840; font-weight: 700; }
+.hint { margin-top: 10px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+
+/* ---------- left controls ---------- */
+.segmented { display: grid; gap: 7px; }
+.segment {
+  min-height: 38px; text-align: left; padding: 9px 12px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  border-radius: 3px; font-size: 13.5px;
+}
+.segment:hover { border-color: #c4ccd3; }
+.segment.active { border-color: rgba(107, 31, 43, 0.45); background: var(--brand-tint); color: var(--brand-dark); font-weight: 700; }
+.primary-action {
+  width: 100%; min-height: 40px; background: var(--brand); border: 1px solid var(--brand);
+  color: #fff; font-weight: 700; border-radius: 3px; font-size: 13.5px;
+}
+.primary-action:hover { background: var(--brand-dark); }
+.secondary-action {
+  width: 100%; min-height: 36px; margin-top: 10px; background: var(--soft);
+  border: 1px solid var(--line); color: var(--ink); border-radius: 3px; font-size: 13px;
+}
+.secondary-action:hover { background: #e3eaf0; }
+.switch-row { display: flex; align-items: center; gap: 10px; min-height: 32px; color: #2f3d46; font-size: 13.5px; cursor: pointer; }
+.switch-row input { accent-color: var(--brand); width: 15px; height: 15px; }
+.range-control { display: grid; gap: 7px; margin-top: 13px; color: #2f3d46; font-size: 13px; }
+.range-control > span { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.range-control strong { color: var(--brand-dark); font-variant-numeric: tabular-nums; }
+.range-control input[type=range] { width: 100%; accent-color: var(--brand); }
+.control-disabled { opacity: 0.48; cursor: not-allowed; }
+select {
+  width: 100%; height: 34px; padding: 0 8px; border: 1px solid var(--line);
+  border-radius: 3px; font-size: 13px; background: #fff; color: var(--ink);
+}
+.mini-seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.mini-seg button {
+  min-height: 32px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  border-radius: 3px; font-size: 12.5px;
+}
+.mini-seg button.active { border-color: rgba(107, 31, 43, 0.45); background: var(--brand-tint); color: var(--brand-dark); font-weight: 700; }
+
+/* ---------- stage ---------- */
+.stage-wrap { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.stage-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.stage-header h1 { font-size: 22px; line-height: 1.25; font-weight: 700; }
+#scene-lead { margin-top: 5px; color: var(--muted); font-size: 13.5px; line-height: 1.55; max-width: 60ch; }
+.status-pill {
+  flex: 0 0 auto; color: var(--accent-dark); background: var(--accent-tint);
+  border: 1px solid #c6e7e2; padding: 7px 12px; border-radius: 2px; font-size: 12.5px; font-weight: 700;
+}
+.canvas-card {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  background: #fcfdfe; border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 4px;
+}
+#canvas-container { position: absolute; inset: 0; }
+#canvas-container canvas { display: block; }
+.canvas-overlay { position: absolute; inset: 0; pointer-events: none; }
+.canvas-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; pointer-events: auto; }
+.tool-btn {
+  width: 34px; height: 34px; display: grid; place-items: center; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92); border: 1px solid var(--line); color: #43505a;
+  box-shadow: 0 2px 8px rgba(23, 32, 38, 0.08);
+}
+.tool-btn:hover { background: #fff; border-color: #b9c4cc; }
+.tool-btn svg { width: 16px; height: 16px; }
+.legend {
+  position: absolute; bottom: 12px; left: 14px; display: flex; gap: 13px;
+  padding: 7px 11px; background: rgba(255, 255, 255, 0.9); border: 1px solid var(--line);
+  border-radius: 5px; font-size: 11.5px; color: #3d4a53;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 15px; height: 3px; border-radius: 2px; }
+.legend-swatch.dashed { background: repeating-linear-gradient(90deg, #1f617d 0 4px, transparent 4px 7px); }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+.heat-legend {
+  position: absolute; bottom: 12px; right: 14px; display: flex; align-items: center; gap: 6px;
+  padding: 7px 9px; background: rgba(255, 255, 255, 0.9); border: 1px solid var(--line);
+  border-radius: 5px; font-size: 10.5px; color: #3d4a53;
+}
+.heat-bar { width: 84px; height: 7px; border-radius: 2px; background: linear-gradient(90deg, #1e4b78, #0f766e, #63b3a4, #d9a441, #b9424a); }
+.sample-readout {
+  position: absolute; top: 56px; right: 12px; max-width: 250px; padding: 9px 11px;
+  background: rgba(255, 255, 255, 0.94); border: 1px solid var(--line); border-radius: 6px;
+  font-size: 11.5px; color: #3d4a53; text-align: right; line-height: 1.6; pointer-events: none;
+}
+.sample-readout strong { color: var(--brand-dark); font-size: 14px; font-variant-numeric: tabular-nums; }
+.pred-lock {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  padding: 16px 22px; background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line);
+  border-radius: 6px; box-shadow: var(--shadow); color: #2c3840; font-size: 13.5px;
+  display: none; text-align: center; line-height: 1.7; pointer-events: none;
+}
+.pred-lock.show { display: block; }
+.pred-lock strong { color: var(--brand-dark); }
+
+/* ---------- right AI panel ---------- */
+.ai-title { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.ai-title h2 { margin-bottom: 0; }
+.ai-dot { width: 10px; height: 10px; background: var(--accent); box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.12); border-radius: 50%; }
+.ai-summary { color: #26353d; font-size: 13.5px; line-height: 1.75; }
+.check-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.check-list li { position: relative; padding-left: 18px; color: #324149; font-size: 13px; line-height: 1.55; }
+.check-list li::before { content: ""; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; background: var(--accent); border-radius: 50%; }
+.check-list li.warn::before { background: var(--brand); }
+
+/* ---------- solver console ---------- */
+.solver-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.solver-heading h2 { margin-bottom: 0; }
+.console-toggle {
+  min-height: 28px; padding: 4px 10px; border: 1px solid rgba(15, 118, 110, 0.36);
+  background: var(--accent-tint); color: var(--accent-dark); font-size: 12px; font-weight: 700; border-radius: 3px;
+}
+.solver-console {
+  position: relative; overflow: hidden; margin-top: 12px; padding: 12px;
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0) 28%), #04110b;
+  border: 1px solid rgba(68, 255, 164, 0.46); border-radius: 3px;
+  box-shadow: inset 0 0 32px rgba(14, 165, 92, 0.18), 0 12px 28px rgba(7, 18, 13, 0.18);
+}
+.solver-console::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(143, 247, 184, 0.04) 0, rgba(143, 247, 184, 0.04) 1px, transparent 1px, transparent 7px);
+}
+.console-topline { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: #dbffe9; font-weight: 800; font-size: 12px; }
+.live-dot { display: inline-block; width: 8px; height: 8px; margin-right: 7px; background: #22c55e; box-shadow: 0 0 12px rgba(34, 197, 94, 0.88); border-radius: 50%; animation: livePulse 1.4s ease-in-out infinite; }
+.console-chip { padding: 2px 6px; border: 1px solid rgba(126, 247, 178, 0.34); color: #7ef7b2; font-size: 11px; border-radius: 2px; }
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
+.metric-cell { padding: 7px; border: 1px solid rgba(126, 247, 178, 0.2); background: rgba(3, 28, 16, 0.72); border-radius: 2px; }
+.metric-label { color: #72d99e; font-size: 10px; }
+.metric-value { margin-top: 2px; color: #e5fff0; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.console-block { margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(126, 247, 178, 0.18); }
+.console-block-title { margin-bottom: 6px; color: #4ade80; font-weight: 800; font-size: 11px; }
+.formula-stack { display: grid; gap: 5px; }
+.formula-line {
+  padding: 5px 7px; background: rgba(5, 33, 20, 0.7); border-left: 2px solid rgba(74, 222, 128, 0.72);
+  color: #d8ffe7; font-family: "Times New Roman", ui-serif, serif; font-size: 14.5px; line-height: 1.4; border-radius: 0 2px 2px 0;
+}
+.formula-line code { color: #9fffc4; font-family: var(--mono); font-size: 12px; }
+.status-line { color: #7ef7b2; font: 700 11px var(--mono); margin-top: 6px; }
+@keyframes livePulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1180px) {
+  .shell { grid-template-columns: 250px minmax(0, 1fr) 300px; }
+}
+@media (max-width: 1100px) {
+  body { overflow: auto; }
+  .shell {
+    grid-template-columns: 250px minmax(0, 1fr);
+    grid-template-rows: minmax(620px, calc(100dvh - 94px)) auto;
+    height: auto; overflow-y: visible;
+  }
+  .ai-panel { grid-column: 1 / -1; max-height: none; }
+}
+@media (max-width: 980px) {
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto minmax(360px, 1fr) auto; overflow-y: auto; height: auto; }
+  body { overflow: auto; }
+  .panel { max-height: 300px; }
+  .ai-panel { grid-column: auto; }
+  .stage-header { flex-direction: column; align-items: start; }
+}
+@media (max-width: 700px) {
+  .topbar {
+    height: auto; min-height: 62px; padding: 8px 12px; gap: 8px;
+    flex-wrap: wrap; align-content: center;
+  }
+  .brand { flex: 1 1 190px; gap: 9px; }
+  .brand-mark { width: 32px; height: 32px; }
+  .brand-subtitle { font-size: 14px; line-height: 1.2; }
+  .brand-subtitle small { display: none; }
+  .topbar-right { gap: 6px; flex: 0 0 auto; }
+  .fps, .lesson-tag { display: none; }
+  .mode-switch button { min-width: 46px; padding: 0 9px; }
+  .shell { padding: 10px; gap: 12px; }
+  .panel { padding: 14px; }
+  .stage-header { margin-bottom: 9px; gap: 8px; }
+  .stage-header h1 { font-size: 20px; }
+  #scene-lead { font-size: 13px; }
+  .canvas-card { min-height: 300px; }
+  .canvas-tools { top: 9px; right: 9px; }
+  .legend { left: 8px; right: 8px; bottom: 8px; gap: 8px; overflow-x: auto; }
+  .heat-legend { right: 8px; bottom: 48px; }
+  .sample-readout {
+    top: 9px; left: 9px; right: auto; max-width: calc(100% - 100px);
+    padding: 6px 8px; font-size: 10.5px; line-height: 1.35; text-align: left;
+  }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 3h4M14 3h4"/><path d="M9 21l3-6 3 6"/>
+      </svg>
+    </div>
+    <div class="brand-subtitle">磁场 AI 可视化实验室<small>MAGNETIC FIELD · AI VISUALIZATION LAB</small></div>
+  </div>
+  <div class="topbar-right">
+    <span class="fps" id="fps">-- FPS</span>
+    <div class="mode-switch">
+      <button data-mode="student" aria-pressed="true">学生</button>
+      <button data-mode="teacher" aria-pressed="false">教师</button>
+    </div>
+    <div class="lesson-tag">感受磁场 · 磁感线与磁场分布</div>
+  </div>
+</header>
+<main class="shell">
+  <aside class="panel controls" id="left-panel" aria-label="课堂控制"></aside>
+  <section class="stage-wrap" aria-label="磁场可视化画布">
+    <div class="stage-header">
+      <div>
+        <h1 id="scene-title">地磁场</h1>
+        <p id="scene-lead"></p>
+      </div>
+      <div class="status-pill" id="status-pill">模型显示中</div>
+    </div>
+    <div class="canvas-card">
+      <div id="canvas-container"></div>
+      <div class="canvas-overlay">
+        <div class="canvas-tools">
+          <button class="tool-btn" id="btn-reset" title="重置视角">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          </button>
+          <button class="tool-btn" id="btn-fullscreen" title="全屏">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          </button>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-swatch" style="background:#1f617d"></span><span id="legend-field-label">磁感线</span></div>
+          <div class="legend-item" id="legend-separatrix" style="display:none"><span class="legend-swatch dashed"></span>中垂分界线</div>
+          <div class="legend-item" id="legend-current"><span class="legend-dot" style="background:#ff4433"></span>电流方向</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff8c00"></span>点击显示磁场方向</div>
+          <div class="legend-item" id="legend-n"><span class="legend-dot" style="background:#b9424a"></span>N 极</div>
+          <div class="legend-item" id="legend-s"><span class="legend-dot" style="background:#2367a3"></span>S 极</div>
+        </div>
+        <div class="heat-legend"><span id="heat-min">0</span><div class="heat-bar"></div><span>P98 <b id="heat-max">--</b></span></div>
+        <div class="sample-readout" id="sample-readout">点击磁感线任意位置，显示该处磁场方向</div>
+        <div class="pred-lock" id="pred-lock"></div>
+      </div>
+    </div>
+  </section>
+  <aside class="panel ai-panel" id="right-panel" aria-label="AI助教"></aside>
+</main>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/addons/": "./vendor/addons/"
+  }
+}
+</script>
+<script type="module" src="app.js?v=20260830-physics"></script>
+</body>
+</html>
