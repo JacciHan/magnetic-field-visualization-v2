@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="教室磁场数据汇总工具，支持座位数据录入、CSV 导入、热力图和矢量图。">
+  <title>教室磁场数据汇总</title>
+  <style>
+    :root {
+      --ink: #1f2d35;
+      --muted: #61717b;
+      --line: #d7e0e5;
+      --paper: #ffffff;
+      --wash: #f3f6f7;
+      --teal: #0f766e;
+      --teal-dark: #0a5752;
+      --teal-soft: #e8f5f2;
+      --orange: #d97706;
+      --burgundy: #7f1d2d;
+      --danger: #b42318;
+      --shadow: 0 8px 24px rgba(28, 43, 51, 0.08);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--wash);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--wash); }
+    button, input, textarea { font: inherit; }
+    button, .file-button, a { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    .topbar {
+      min-height: 64px; display: flex; align-items: center; justify-content: space-between;
+      gap: 18px; padding: 10px 22px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .mark {
+      width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 auto;
+      color: #fff; background: var(--burgundy); border-radius: 7px; font-weight: 800;
+    }
+    .brand h1 { margin: 0; font-size: 18px; line-height: 1.25; letter-spacing: 0; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 11px; letter-spacing: 0; }
+    .back-link { color: var(--teal-dark); font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .back-link:hover { text-decoration: underline; }
+    .intro {
+      padding: 18px 22px 16px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .intro-inner { max-width: 1520px; margin: 0 auto; display: flex; justify-content: space-between; gap: 24px; }
+    .intro h2 { margin: 0; font-size: 22px; letter-spacing: 0; }
+    .intro p { margin: 7px 0 0; max-width: 78ch; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .privacy { flex: 0 0 auto; align-self: center; color: var(--teal-dark); background: var(--teal-soft); padding: 7px 10px; border: 1px solid #bfe3dd; border-radius: 4px; font-size: 12px; font-weight: 700; }
+    .workspace {
+      max-width: 1564px; margin: 0 auto; padding: 16px 22px 22px;
+      display: grid; grid-template-columns: 280px minmax(520px, 1fr) 330px; gap: 14px; align-items: start;
+    }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); min-width: 0; }
+    .panel-head { padding: 14px 15px 11px; border-bottom: 1px solid var(--line); }
+    .panel-head h3 { margin: 0; font-size: 15px; letter-spacing: 0; }
+    .panel-head p { margin: 5px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.55; }
+    .form { padding: 14px 15px 16px; display: grid; gap: 12px; }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    label { display: grid; gap: 5px; color: #35454e; font-size: 12px; }
+    input, textarea {
+      width: 100%; border: 1px solid #bfcbd2; border-radius: 4px; background: #fff; color: var(--ink);
+      padding: 8px 9px; outline: none;
+    }
+    input { height: 36px; }
+    textarea { min-height: 64px; resize: vertical; line-height: 1.5; }
+    input:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12); }
+    .field-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .field-title span:last-child { color: var(--muted); font-size: 10.5px; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .primary, .secondary, .danger, .file-button {
+      min-height: 36px; border-radius: 4px; border: 1px solid transparent; padding: 7px 10px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 700;
+    }
+    .primary { color: #fff; background: var(--teal); }
+    .primary:hover { background: var(--teal-dark); }
+    .secondary, .file-button { color: var(--ink); background: #fff; border-color: var(--line); }
+    .secondary:hover, .file-button:hover { background: #f7fafb; border-color: #aebcc4; }
+    .danger { color: var(--danger); background: #fff; border-color: #efc4bf; }
+    .danger:hover { background: #fff4f2; }
+    .file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .canvas-panel { overflow: hidden; }
+    .canvas-toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+    }
+    .mode-switch { display: inline-flex; padding: 2px; background: #edf2f4; border: 1px solid var(--line); border-radius: 6px; }
+    .mode-switch button { height: 30px; min-width: 94px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 12px; }
+    .mode-switch button.active { color: #fff; background: var(--teal); font-weight: 700; }
+    .legend { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 11px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .swatch { width: 14px; height: 7px; border-radius: 2px; background: linear-gradient(90deg, #2563a6, #15a08c, #e3b341, #bd3e42); }
+    .anomaly-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+    .canvas-wrap { position: relative; width: 100%; aspect-ratio: 3 / 2; min-height: 360px; background: #fbfcfd; }
+    canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    .empty {
+      position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center;
+      color: var(--muted); font-size: 13px; line-height: 1.7; pointer-events: none;
+    }
+    .canvas-caption { padding: 10px 14px 12px; color: var(--muted); font-size: 11.5px; line-height: 1.55; border-top: 1px solid var(--line); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+    .stat { padding: 12px 13px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .stat:nth-child(2n) { border-right: 0; }
+    .stat:nth-last-child(-n+2) { border-bottom: 0; }
+    .stat small { display: block; color: var(--muted); font-size: 10.5px; }
+    .stat strong { display: block; margin-top: 4px; font-size: 17px; font-variant-numeric: tabular-nums; }
+    .records { max-height: 448px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+    th { position: sticky; top: 0; z-index: 1; color: #fff; background: #42545e; font-weight: 700; }
+    th, td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #f0f7f6; }
+    tbody tr.selected { background: var(--teal-soft); }
+    td.note { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    .row-delete { border: 0; color: var(--danger); background: transparent; font-weight: 800; }
+    .method { padding: 13px 15px 15px; color: var(--muted); font-size: 11.5px; line-height: 1.7; }
+    .method strong { color: var(--ink); }
+    .toast {
+      position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 12px); opacity: 0;
+      padding: 9px 13px; color: #fff; background: #26343c; border-radius: 4px; font-size: 12px;
+      transition: opacity .18s ease, transform .18s ease; pointer-events: none; z-index: 10;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 270px minmax(460px, 1fr); }
+      .records-panel { grid-column: 1 / -1; }
+      .records { max-height: 320px; }
+    }
+    @media (max-width: 760px) {
+      .topbar, .intro { padding-left: 12px; padding-right: 12px; }
+      .intro-inner { display: block; }
+      .privacy { display: inline-block; margin-top: 10px; }
+      .workspace { grid-template-columns: 1fr; padding: 12px; }
+      .canvas-wrap { min-height: 300px; aspect-ratio: 1 / 1; }
+      .records-panel { grid-column: auto; }
+      .legend { width: 100%; }
+      .mode-switch { width: 100%; }
+      .mode-switch button { flex: 1; }
+      .brand p { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">B</div>
+      <div><h1>教室磁场数据汇总</h1><p>CLASSROOM MAGNETIC FIELD MAPPER</p></div>
+    </div>
+    <a class="back-link" href="./">返回磁场可视化实验室</a>
+  </header>
+
+  <section class="intro">
+    <div class="intro-inner">
+      <div>
+        <h2>用统一姿态的实测数据寻找局部磁异常</h2>
+        <p>每个座位记录 Phyphox 的 Bx、By、Bz。工具展示磁场大小或水平分量方向，并用透明的稳健阈值标记异常点。图中连线和色块是采样数据的二维插值，不代表唯一真实的三维磁感线。</p>
+      </div>
+      <div class="privacy">数据仅保存在本机浏览器</div>
+    </div>
+  </section>
+
+  <main class="workspace">
+    <section class="panel" aria-label="数据录入">
+      <div class="panel-head"><h3>座位数据</h3><p>手机平放、屏幕朝上、顶部统一指向教室正北。</p></div>
+      <form class="form" id="entry-form">
+        <div class="grid-two">
+          <label>排<input id="row" type="number" min="1" max="12" value="1" required></label>
+          <label>列<input id="col" type="number" min="1" max="16" value="1" required></label>
+        </div>
+        <div class="grid-two">
+          <label><span class="field-title"><span>Bx</span><span>μT</span></span><input id="bx" type="number" step="0.01" required></label>
+          <label><span class="field-title"><span>By</span><span>μT</span></span><input id="by" type="number" step="0.01" required></label>
+        </div>
+        <label><span class="field-title"><span>Bz</span><span>μT</span></span><input id="bz" type="number" step="0.01" required></label>
+        <label>附近物体或备注<textarea id="note" placeholder="例如：靠近铁门、桌腿或电源线"></textarea></label>
+        <div class="actions">
+          <button class="primary" type="submit">添加或更新</button>
+          <button class="secondary" id="reset-form" type="button">清空输入</button>
+        </div>
+        <div class="actions">
+          <label class="file-button">导入 CSV<input id="csv-input" type="file" accept=".csv,text/csv"></label>
+          <button class="secondary" id="export-csv" type="button">导出 CSV</button>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="load-demo" type="button">加载示例</button>
+          <button class="danger" id="clear-all" type="button">清空全部</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel canvas-panel" aria-label="磁场图">
+      <div class="canvas-toolbar">
+        <div class="mode-switch" role="tablist" aria-label="图层模式">
+          <button class="active" data-mode="magnitude" role="tab" aria-selected="true">磁场大小</button>
+          <button data-mode="vector" role="tab" aria-selected="false">水平分量</button>
+        </div>
+        <div class="legend"><span><i class="swatch"></i>相对大小</span><span><i class="anomaly-dot"></i>异常候选</span></div>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="map-canvas" width="900" height="600"></canvas>
+        <div class="empty" id="empty-state">尚无测量数据<br>可逐点录入、导入 CSV，或加载示例数据。</div>
+      </div>
+      <div class="canvas-caption" id="canvas-caption">热力图按当前样本的磁场大小范围着色；红圈仅表示偏离班级基线较大的候选点，需要回到现场检查。</div>
+    </section>
+
+    <section class="panel records-panel" aria-label="数据记录">
+      <div class="panel-head"><h3>汇总与复核</h3><p>点击记录可回填修改。异常识别只提供线索，不替代现场核查。</p></div>
+      <div class="stats">
+        <div class="stat"><small>采样点</small><strong id="stat-count">0</strong></div>
+        <div class="stat"><small>平均 |B|</small><strong id="stat-mean">--</strong></div>
+        <div class="stat"><small>基线矢量</small><strong id="stat-base">--</strong></div>
+        <div class="stat"><small>异常候选</small><strong id="stat-anomaly">0</strong></div>
+      </div>
+      <div class="records">
+        <table>
+          <thead><tr><th>座位</th><th>Bx</th><th>By</th><th>Bz</th><th>|B|</th><th>备注</th><th></th></tr></thead>
+          <tbody id="records-body"></tbody>
+        </table>
+      </div>
+      <div class="method"><strong>判定方法：</strong>分别取 Bx、By、Bz 的中位数作为教室基线，计算每个点与基线矢量的差值。阈值采用“差值中位数 + 3 × 1.4826 × MAD”，并设置 5 μT 的最小门槛。</div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="classroom-map.js?v=20260905"></script>
+</body>
+</html>

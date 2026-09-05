@@ -87,6 +87,11 @@ h2 { margin-bottom: 12px; font-size: 14px; color: #2c3840; font-weight: 700; }
   border: 1px solid var(--line); color: var(--ink); border-radius: 3px; font-size: 13px;
 }
 .secondary-action:hover { background: #e3eaf0; }
+.classroom-map-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 11px; text-decoration: none;
+}
+.classroom-map-link span[aria-hidden="true"] { color: var(--accent-dark); font-size: 16px; line-height: 1; }
 .switch-row { display: flex; align-items: center; gap: 10px; min-height: 32px; color: #2f3d46; font-size: 13.5px; cursor: pointer; }
 .switch-row input { accent-color: var(--brand); width: 15px; height: 15px; }
 .range-control { display: grid; gap: 7px; margin-top: 13px; color: #2f3d46; font-size: 13px; }
@@ -317,6 +322,6 @@ select {
   }
 }
 </script>
-<script type="module" src="app.js?v=20260830-feedback"></script>
+<script type="module" src="app.js?v=20260905-course"></script>
 </body>
 </html>

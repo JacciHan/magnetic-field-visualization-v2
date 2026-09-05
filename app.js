@@ -334,7 +334,7 @@ const SCENES = [
       '电流反向后，各处磁场方向同步反转，大小保持不变',
     ],
     ai: '弯折导线按完整闭合电路建模。画面突出三段可见导线，同时明确显示远置回流路径。这个场景适合比较“有限弯折导线的真实叠加场”和“局部无限长直导线近似”的适用条件。',
-    camera: { pos: [9.5, 6.5, 13.5], target: [0, 0.35, -0.8] },
+    camera: { pos: [7.5, 4.8, 10.5], target: [0, 0.45, -0.55] },
   },
   {
     id: 'straight-wire', name: '通电直导线',
@@ -392,7 +392,9 @@ const SCENES = [
       '叠加原理：B_total = B₁ + B₂（切换显示模式验证）',
     ],
     ai: '两根平行导线是“磁场叠加 + 安培力”的经典场景。两根电流可独立调节；只有同向、等流时几何中点才严格为零。单位长度安培力 F/L = μ₀I₁I₂/(2πd)。',
-    camera: { pos: [8.5, 5, 9], target: [0, 0, 0] },
+    // Keep the camera on the x = 0 symmetry plane so equal-current wires do
+    // not acquire a false left/right size difference from perspective.
+    camera: { pos: [0, 6.5, 13], target: [0, 0, 0] },
   },
   {
     id: 'loop', name: '环形电流',
@@ -1894,6 +1896,13 @@ function buildLeftPanel(def) {
     list.appendChild(b);
   }
   secScene.appendChild(list);
+  const classroomMap = document.createElement('a');
+  classroomMap.className = 'secondary-action classroom-map-link';
+  classroomMap.href = './classroom-map.html';
+  classroomMap.target = '_blank';
+  classroomMap.rel = 'noopener';
+  classroomMap.innerHTML = '<span>教室磁场图</span><span aria-hidden="true">↗</span>';
+  secScene.appendChild(classroomMap);
   panel.appendChild(secScene);
 
   // 课堂模式
