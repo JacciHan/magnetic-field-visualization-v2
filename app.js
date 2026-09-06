@@ -30,6 +30,8 @@ const BIOT_SAVART_SCALE = (MU0 / (4 * Math.PI * LENGTH_UNIT_M)) * TESLA_TO_MICRO
 const MAGNETIC_POLE_SCALE = 1 / (4 * Math.PI);
 const WIRE_RADIUS = 0.06;
 const LOOP_WIRE_RADIUS = 0.075;
+const GAUSS48_NODES = [-0.9987710072524261, -0.9935301722663508, -0.9841245837228269, -0.9705915925462473, -0.9529877031604308, -0.9313866907065543, -0.9058791367155696, -0.8765720202742479, -0.8435882616243935, -0.8070662040294426, -0.7671590325157404, -0.7240341309238146, -0.6778723796326639, -0.6288673967765136, -0.5772247260839727, -0.523160974722233, -0.4669029047509584, -0.4086864819907167, -0.34875588629216075, -0.28736248735545555, -0.22476379039468905, -0.16122235606889174, -0.0970046992094627, -0.03238017096286937, 0.03238017096286937, 0.0970046992094627, 0.16122235606889174, 0.22476379039468905, 0.28736248735545555, 0.34875588629216075, 0.4086864819907167, 0.4669029047509584, 0.523160974722233, 0.5772247260839727, 0.6288673967765136, 0.6778723796326639, 0.7240341309238146, 0.7671590325157404, 0.8070662040294426, 0.8435882616243935, 0.8765720202742479, 0.9058791367155696, 0.9313866907065543, 0.9529877031604308, 0.9705915925462473, 0.9841245837228269, 0.9935301722663508, 0.9987710072524261];
+const GAUSS48_WEIGHTS = [0.003153346052309842, 0.0073275539012758505, 0.0114772345792347, 0.015579315722943481, 0.019616160457356105, 0.02357076083932401, 0.027426509708357052, 0.031167227832798117, 0.03477722256477042, 0.03824135106583047, 0.04154508294346453, 0.044674560856694245, 0.04761665849249027, 0.050359035553854216, 0.052890189485193424, 0.05519950369998404, 0.05727729210040288, 0.05911483969839536, 0.06070443916589356, 0.062039423159892415, 0.06311419228625376, 0.06392423858464788, 0.06446616443594981, 0.06473769681268363, 0.06473769681268363, 0.06446616443594981, 0.06392423858464788, 0.06311419228625376, 0.062039423159892415, 0.06070443916589356, 0.05911483969839536, 0.05727729210040288, 0.05519950369998404, 0.052890189485193424, 0.050359035553854216, 0.04761665849249027, 0.044674560856694245, 0.04154508294346453, 0.03824135106583047, 0.03477722256477042, 0.031167227832798117, 0.027426509708357052, 0.02357076083932401, 0.019616160457356105, 0.015579315722943481, 0.0114772345792347, 0.0073275539012758505, 0.003153346052309842];
 
 /* ==================== 标量场计算（无内存分配，保证性能） ==================== */
 function evalMonopoles(x, y, z, arr, out) {
@@ -42,6 +44,25 @@ function evalMonopoles(x, y, z, arr, out) {
     bx += f * dx; by += f * dy; bz += f * dz;
   }
   out.set(bx, by, bz);
+  return out;
+}
+
+// Exact rectangular surface integral. The equivalent pole density is a
+// calculation device for a uniformly magnetized cuboid, not a monopole.
+function evalRectFace(x, y, z, faceY, halfWidth, density, out) {
+  const w = y - faceY;
+  let bx = 0, by = 0, bz = 0;
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+    const u = x + (i ? halfWidth : -halfWidth);
+    const v = z + (j ? halfWidth : -halfWidth);
+    const r = Math.hypot(u, v, w), s = i === j ? 1 : -1;
+    bx -= s * Math.log(Math.max(v + r, 1e-15));
+    bz -= s * Math.log(Math.max(u + r, 1e-15));
+    if (w !== 0) by += s * Math.atan(u * v / (w * r));
+  }
+  out.x += density * MAGNETIC_POLE_SCALE * bx;
+  out.y += density * MAGNETIC_POLE_SCALE * by;
+  out.z += density * MAGNETIC_POLE_SCALE * bz;
   return out;
 }
 
@@ -261,7 +282,7 @@ function appendRectFace(list, center, u, v, uLen, vLen, nu, nv, sigma) {
 const SCENES = [
   {
     id: 'earth', name: '地磁场',
-    lead: '地球近似为一个磁矩偏离自转轴约 11.5° 的磁偶极子。磁感线从地磁 N 极（地理南极附近）出发，绕地球外部回到地磁 S 极（地理北极附近），并穿过地球内部形成闭合回路。',
+    lead: '本教学模型将地球主场近似为倾斜磁偶极子，默认倾角11.5°，可调节观察。磁感线从地磁 N 极（地理南极附近）出发，绕地球外部回到地磁 S 极（地理北极附近），并穿过地球内部形成闭合回路。',
     params: [
       { id: 'tilt', label: '磁轴倾角', min: 0, max: 25, step: 0.5, val: 11.5, unit: '°' },
       { id: 'moment', label: '赤道表面场强', min: 20, max: 60, step: 1, val: 30, unit: 'μT' },
@@ -279,7 +300,7 @@ const SCENES = [
     selfCheck: [
       '偶极子场 B ∝ 1/r³，比点电荷的 1/r² 衰减更快',
       '外部：N极 → S极；内部：S极 → N极，球面处方向连续',
-      '磁轴与自转轴夹角约 11.5°（磁偏角随地点变化）',
+      '本教学模型默认磁轴倾角11.5°，不表示今日实测磁轴位置',
     ],
     ai: '球外采用倾斜约 11.5° 的偶极主场；球内不是“永磁球”，而是用光滑、无散度的核心电流场近似地磁发电机产生的回程场。该模型服务于课堂辨形，不代替真实地核动力学。',
     camera: { pos: [13, 7, 17], target: [0, 0, 0] },
@@ -292,21 +313,21 @@ const SCENES = [
       { id: 'strength', label: '等效磁化强度 μ₀M', min: 50, max: 300, step: 10, val: 150, unit: 'mT' },
     ],
     section: { n: 'z', off: 0, rot: 0 }, size: 12,
-    solver: '表面磁荷积分',
+    solver: '矩形端面解析积分',
     formula: '远场 B ∝ 1/r³（有限磁偶极子）',
     valueLine: (P) => `L = ${P.length * 10} cm，μ₀M = ${P.strength} mT`,
     observations: [
       '磁铁外部磁感线从 N 极到 S 极，内部从 S 极回到 N 极',
       '两极附近的局部场通常较强；精确大小请看热力图或点选读数',
-      '磁感线在空间中完整闭合，不会伸向无穷远',
+      '磁感线没有起点和终点；当前画面展示有限视窗中的代表性轨迹',
       '外部中部与两端附近的场强分布不同，不用绘制线数作定量判断',
     ],
     selfCheck: [
-      '磁感线始终闭合——不存在磁单极子',
+      '磁感线无起点和终点；等效面磁荷是计算方法，不是真实磁单极子',
       'N 极处 B 指向外，S 极处 B 指向内',
       '对称位置的磁感线分布应当对称',
     ],
-    ai: '条形磁铁按均匀磁化长方体建模：N、S 端面上的等效面磁荷被离散积分，不是两个点磁荷。磁感线外部从 N 到 S，内部从 S 回到 N，形成闭合回路。',
+    ai: '条形磁铁按均匀磁化长方体建模：N、S 端面上的等效面磁荷采用矩形面解析积分，不是两个点磁荷。磁感线外部从 N 到 S，内部从 S 回到 N，形成闭合回路。',
     camera: { pos: [9, 5.5, 12], target: [0, 0, 0] },
   },
   {
@@ -398,14 +419,15 @@ const SCENES = [
   },
   {
     id: 'loop', name: '环形电流',
-    lead: '有限线径圆形电流回路的磁场由 Biot–Savart 定律数值积分给出。磁感线穿过环内、绕环外闭合，整体像一个小磁针（磁偶极子）。',
+    lead: '圆形细导线回路采用 Biot–Savart 数值积分，导线近场作正则化并屏蔽定量读数。磁感线穿过环内、绕环外闭合，整体像一个小磁针（磁偶极子）。',
     params: [
       { id: 'current', label: '电流 I', min: 10, max: 100, step: 5, val: 50, unit: 'A' },
       { id: 'radius', label: '半径 R', min: 1, max: 4, step: 0.25, val: 2, displayScale: 10, unit: 'cm' },
       { id: 'direction', label: '电流方向', type: 'select', options: ['正向', '反向'], val: '正向' },
+      { id: 'density', label: '磁感线密度', type: 'select', options: ['清晰', '标准', '丰富'], val: '丰富' },
     ],
     section: { n: 'z', off: 0, rot: 0 }, size: 10,
-    solver: '有限线径 Biot–Savart 积分',
+    solver: '细导线积分与近场屏蔽',
     formula: 'B轴(y) = μ₀IR² / 2(R²+y²)^(3/2)',
     valueLine: (P) => `${P.direction}电流 · I = ${P.current} A，R = ${P.radius * 10} cm，a = ${(LOOP_WIRE_RADIUS * 10).toFixed(2)} cm → B心 = ${((2 * Math.PI * P.current) / P.radius).toFixed(1)} μT`,
     observations: [
@@ -415,7 +437,7 @@ const SCENES = [
       '远处的场分布趋近于磁偶极子',
     ],
     selfCheck: [
-      '轴线公式 B = μ₀IR²/[2(R²+z²)^(3/2)] 有解析解',
+      '轴线公式 B = μ₀IR²/[2(R²+y²)^(3/2)] 有解析解',
       '圆心处 B = μ₀I/2R',
       '环电流等效一个小磁针：面法向即 N 极方向',
     ],
@@ -433,7 +455,7 @@ const SCENES = [
       { id: 'direction', label: '电流绕向', type: 'select', options: ['正向（N 在 +Y）', '反向（N 在 −Y）'], val: '正向（N 在 +Y）' },
     ],
     section: { n: 'z', off: 0, rot: 0 }, size: 14,
-    solver: '有限圆环 Biot–Savart 叠加',
+    solver: '连续薄壁螺线管数值积分',
     formula: 'B轴(y) = (μ₀nI/2)(cosθ₁−cosθ₂)，中央 B ≈ μ₀nI',
     valueLine: (P) => {
       const ideal = (MU0 * (P.nLoops / (P.length * LENGTH_UNIT_M)) * P.current) * 1e3;
@@ -450,11 +472,11 @@ const SCENES = [
     ],
     selfCheck: [
       '理想无限长螺线管内部 B = μ₀nI；有限管轴线场使用有限长解析式交叉验证',
-      '数值场由 48 层等效圆环直接叠加，管口两侧方向连续且无端面反向尖峰',
+      '数值场用 变量代换后的 48 点高斯积分逼近连续薄壁电流，积分点数不等于匝数',
       '两端面即 N、S 极，磁感线在管内外闭合',
     ],
-    ai: '螺线管采用有限圆环的 Biot–Savart 叠加模型，不使用端面磁荷点阵。有限长度产生端部效应：中央较强，管口较弱，场方向在管口内外连续；切换绕向时，内部磁场和 N、S 极同步反转。',
-    camera: { pos: [16, 10, 21], target: [0, 0, 0] },
+    ai: '采用空气芯连续薄壁近似，变量代换后的48点高斯积分，N 与 I 决定总安匝数。画中绕线仅示意，不逐匝对应；忽略螺旋轴向电流、引线及回流的贡献，不含铁芯。轴线上中心比管口强，近绕组局部强场须另外比较。导线近场区域屏蔽定量读数。',
+    camera: { pos: [19.5, 12.2, 25.6], target: [0, 0, 0] },
   },
 ];
 
@@ -495,17 +517,19 @@ function buildField(sceneId, P) {
       const L = P.length, q = P.strength;
       const hw = 0.38, Lh = L / 2;
       const M0 = q * 1000;                    // μ0M，μT（沿 +y，N 在 y=L/2）
-      const list = [];
-      appendRectFace(list, [0, Lh, 0], [1, 0, 0], [0, 0, 1], 2 * hw, 2 * hw, 10, 10, M0);
-      appendRectFace(list, [0, -Lh, 0], [1, 0, 0], [0, 0, 1], 2 * hw, 2 * hw, 10, 10, -M0);
-      const mono = new Float64Array(list);
       const evalB = (x, y, z, out) => {
-        evalMonopoles(x, y, z, mono, out);
+        out.set(0, 0, 0);
+        evalRectFace(x, y, z, Lh, hw, M0, out);
+        evalRectFace(x, y, z, -Lh, hw, -M0, out);
         if (Math.abs(x) < hw && Math.abs(y) < Lh && Math.abs(z) < hw) out.y += M0;
+        // Principal surface value preserves normal B at the end face.
+        if (Math.abs(x) < hw && Math.abs(z) < hw && Math.abs(Math.abs(y) - Lh) < 1e-12) out.y += M0 / 2;
         return out;
       };
       const inSolid = (x, y, z) => Math.abs(x) < hw && Math.abs(y) < Lh && Math.abs(z) < hw;
-      return { evalB, inSolid, heatMask: inSolid, poleN: new THREE.Vector3(0, Lh, 0), poleS: new THREE.Vector3(0, -Lh, 0), hw, M0 };
+      const quantitativeMask = (x, y, z) => Math.abs(x) <= hw + 1e-7 && Math.abs(y) <= Lh + 1e-7 && Math.abs(z) <= hw + 1e-7
+        && Math.min(Math.abs(Math.abs(x) - hw), Math.abs(Math.abs(y) - Lh), Math.abs(Math.abs(z) - hw)) < 1e-7;
+      return { evalB, inSolid, heatMask: inSolid, quantitativeMask, poleN: new THREE.Vector3(0, Lh, 0), poleS: new THREE.Vector3(0, -Lh, 0), hw, M0 };
     }
     case 'bent-wire': {
       const sign = P.direction === '左侧向下' ? -1 : 1;
@@ -530,7 +554,7 @@ function buildField(sceneId, P) {
       const I1 = P.current1, I2 = P.current2, d = P.spacing;
       const showLeft = P.display !== '仅右导线';
       const showRight = P.display !== '仅左导线';
-      const dir2 = showLeft && showRight && P.direction === '反向' ? -1 : 1;
+      const dir2 = P.direction === '反向' ? -1 : 1;
       const evalB = (x, y, z, out) => {
         if (showLeft) evalWire(x, y, z, -d / 2, 0, 0, 0, 1, 0, I1, out);
         else out.set(0, 0, 0);
@@ -546,7 +570,7 @@ function buildField(sceneId, P) {
     }
     case 'loop': {
       const I = P.current * (P.direction === '反向' ? -1 : 1), R = P.radius;
-      const segs = buildRingSegs(0, R, I, 384); // 384 段微元：贴近导线处场更精确（Bx 泄漏 <0.4%）
+      const segs = buildRingSegs(0, R, I, P.integrationSegments || 384); // 384 段微元：贴近导线处场更精确（Bx 泄漏 <0.4%）
       const evalB = (x, y, z, out) => evalSegs(x, y, z, segs, out, LOOP_WIRE_RADIUS);
       const heatMask = (x, y, z) => {
         const radial = Math.sqrt(x * x + z * z);
@@ -557,15 +581,31 @@ function buildField(sceneId, P) {
     case 'solenoid': {
       const currentSign = P.direction.startsWith('反向') ? -1 : 1;
       const I = P.current * currentSign, R = P.radius, L = P.length, N = P.nLoops;
-      const sliceCount = 48;
+      const sliceCount = P.integrationSlices || 192;
       const ampereTurns = (I * N) / sliceCount;
       const loopYs = new Float64Array(sliceCount);
       for (let i = 0; i < sliceCount; i++) loopYs[i] = -L / 2 + ((i + 0.5) / sliceCount) * L;
       const evalB = (x, y, z, out) => {
         out.set(0, 0, 0);
-        for (let i = 0; i < loopYs.length; i++) {
-          evalCircularLoopY(x, y, z, loopYs[i], R, ampereTurns, _tmp);
-          out.add(_tmp);
+        if (P.integrationSlices) {
+          for (let i = 0; i < loopYs.length; i++) {
+            evalCircularLoopY(x, y, z, loopYs[i], R, ampereTurns, _tmp);
+            out.add(_tmp);
+          }
+        } else {
+          // Change of variable resolves the narrow near-wall peak without
+          // densely sampling the full length. 48-point Gauss-Legendre rule.
+          const dist = Math.max(0.06, Math.abs(Math.hypot(x, z) - R));
+          const lower = Math.atan((-L / 2 - y) / dist);
+          const upper = Math.atan(( L / 2 - y) / dist);
+          const mid = (lower + upper) / 2, half = (upper - lower) / 2;
+          for (let i = 0; i < GAUSS48_NODES.length; i++) {
+            const theta = mid + half * GAUSS48_NODES[i], cs = Math.cos(theta);
+            const loopY = y + dist * Math.tan(theta);
+            const weight = half * GAUSS48_WEIGHTS[i] * dist / (cs * cs);
+            evalCircularLoopY(x, y, z, loopY, R, I * N / L * weight, _tmp);
+            out.add(_tmp);
+          }
         }
         return out;
       };
@@ -909,6 +949,8 @@ function generateFieldLines(sceneId, P, field) {
         { f: 0.18, side: 'out', step: 0.012, max: 8000, closeTol: 0.03 },
         { f: 1.50, side: null, step: 0.025, max: 50000, closeTol: 0.06 },
       ];
+      if (P.density === '清晰') allSeeds.splice(2, 1);
+      if (P.density === '丰富') allSeeds.push({f:0.61,side:null,step:0.018,max:70000,closeTol:0.045});
       const baseAngle = Math.atan2(18, 14) + Math.PI / 2;
       for (let k = 0; k < 2; k++) {
         const a = baseAngle + (k === 0 ? -0.38 : 0.38);
@@ -1380,7 +1422,7 @@ function createSources(sceneId, P) {
       const d = P.spacing;
       const showLeft = P.display !== '仅右导线';
       const showRight = P.display !== '仅左导线';
-      const dir2 = showLeft && showRight && P.direction === '反向' ? -1 : 1;
+      const dir2 = P.direction === '反向' ? -1 : 1;
       for (let i = 0; i < 2; i++) {
         if (i === 0 && !showLeft) continue;
         if (i === 1 && !showRight) continue;
@@ -1538,10 +1580,15 @@ function onCanvasClick(e) {
     if (raycaster.ray.intersectPlane(plane, hp)) point = hp;
   }
   if (point) {
-    if (currentScene.id === 'two-wires') {
-      if (Math.abs(point.x) < 0.025) point.x = 0;
-      if (Math.abs(point.y) < 0.025) point.y = 0;
-      if (Math.abs(point.z) < 0.025) point.z = 0;
+    if (currentField.quantitativeMask?.(point.x, point.y, point.z)) {
+      clearGroup(pickerGroup);
+      document.getElementById('sample-readout').textContent = '此点位于理想磁体材料界面，请选界面内侧或外侧位置作定量比较。';
+      return;
+    }
+    if (['loop', 'solenoid', 'bent-wire'].includes(currentScene.id) && currentField.heatMask?.(point.x, point.y, point.z)) {
+      clearGroup(pickerGroup);
+      document.getElementById('sample-readout').textContent = '此点位于导线近场正则化区域，暂不作定量读数；请选导线外部位置。';
+      return;
     }
     currentField.evalB(point.x, point.y, point.z, _b);
     const B = _b.clone();
@@ -1591,9 +1638,6 @@ function onCanvasMove(e) {
   const plane = new THREE.Plane(sec.n.clone(), -sec.n.dot(sec.center));
   const hp = new THREE.Vector3();
   if (!raycaster.ray.intersectPlane(plane, hp)) return;
-  // 画布中心可能落在半像素上；一像素内吸附到对称轴，保证中点零场演示与坐标读数一致。
-  if (Math.abs(hp.x) < 0.025) hp.x = 0;
-  if (Math.abs(hp.z) < 0.025) hp.z = 0;
   const f = currentField, d = f.d, dir2 = f.dir2;
   evalWire(hp.x, hp.y, hp.z, -d / 2, 0, 0, 0, 1, 0, f.I1, _b1);     // 左导线贡献 B₁
   evalWire(hp.x, hp.y, hp.z, d / 2, 0, 0, 0, 1, 0, f.I2 * dir2, _b2); // 右导线贡献 B₂
@@ -2184,7 +2228,7 @@ function updateSampleReadout(pos, B) {
       <div>P(${coord(pos.x)}, ${coord(pos.y)}, ${coord(pos.z)}) · 1单位=10 cm</div>
       <strong>|B| = ${formatFieldValue(m)}</strong>
       <div>B = (${component(B.x)}, ${component(B.y)}, ${component(B.z)}) ${display.unit}</div>
-      <div>方向 → (${ux}, ${uy}, ${uz})</div>`;
+      <div>${m > 1e-9 ? `方向 → (${ux}, ${uy}, ${uz})` : '方向未定义（零场）'}</div>`;
   }
   const mm = document.getElementById('m-sample');
   if (mm) mm.textContent = formatFieldValue(m);
@@ -2513,6 +2557,7 @@ function runGeometryValidation(sceneIds = SCENES.map((sceneDef) => sceneDef.id))
 window.__MAGNETIC_LAB__ = {
   constants: { MU0, LENGTH_UNIT_M, WIRE_RADIUS, LOOP_WIRE_RADIUS },
   sample: sampleModel,
+  scenes: SCENES.map(s => ({id:s.id,params:s.params})),
   validate: runPhysicsValidation,
   validateGeometry: runGeometryValidation,
 };

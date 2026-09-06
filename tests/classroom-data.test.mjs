@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {validateRows,HEADERS,vectorInfo,colorRange,worldVector,deskPosition,demoRecords,parseCSV,toCSV} from '../classroom-data.js';
+const rows=a=>[{rowNumber:1,values:HEADERS},...a.map((values,i)=>({rowNumber:i+2,values}))];
+test('3-4-12 vector yields total13 and downward negative inclination',()=>{const i=vectorInfo({bx:3,by:4,bz:12});assert.equal(i.total,13);assert.equal(i.horizontal,5);assert.ok(i.inclination<0);});
+test('zero vector has undefined direction; vertical down has inclination90',()=>{assert.equal(vectorInfo({bx:0,by:0,bz:0}).inclination,null);assert.equal(vectorInfo({bx:0,by:0,bz:-5}).inclination,90);});
+test('missing component, duplicate, invalid coordinate reject entire import',()=>{for(const a of [[[1,1,2,'',4]],[[1,1,2,3,4],[1,1,3,4,5]],[[0,1,2,3,4]],[[1.2,1,2,3,4]],[[1,1,'Infinity',3,4]],[[1,1,'未计算公式',3,4]]]){const r=validateRows(rows(a));assert.ok(r.errors.length);assert.equal(r.records.length,0);}});
+test('sparse cells are missing, not zero',()=>{const a=[];a[0]=1;a[1]=1;a[3]=0;a[4]=0;assert.ok(validateRows(rows([a])).errors.length);});
+test('blank rows allowed and source row number preserved in errors',()=>{assert.equal(validateRows(rows([[],[1,1,0,0,0]])).records.length,1);const r=validateRows([{rowNumber:1,values:HEADERS},{rowNumber:31,values:[1,1,'',0,0]}]);assert.match(r.errors[0],/第31行/);});
+test('no spurious huge color contrast for constant or near-uniform fields',()=>{for(const r of [demoRecords(),[{bx:0,by:0,bz:0}]]){const c=colorRange(r);assert.ok(c.high-c.low>=20);assert.ok(c.low<=c.min&&c.high>=c.max);}assert.deepEqual(colorRange(demoRecords(),[0,100]).high,100);});
+test('100 rows retained and csv roundtrip preserves signed vectors and coordinates',()=>{const a=demoRecords(100),r=validateRows(parseCSV(toCSV(a)));assert.deepEqual(r.records,a);});
+test('world axes and classroom heading do not conflate desk numbering with B components',()=>{assert.deepEqual(worldVector({bx:1,by:2,bz:3}),[1,3,-2]);const p=deskPosition(2,1,2,2,90);assert.ok(Math.abs(p[0]-.75)<1e-12);assert.ok(Math.abs(p[2]-.75)<1e-12);});

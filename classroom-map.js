@@ -1,391 +1,130 @@
-const STORAGE_KEY = 'magnetic-classroom-map-v1';
-const state = { records: [], mode: 'magnitude', selectedKey: null };
-
-const $ = (id) => document.getElementById(id);
-const canvas = $('map-canvas');
-const ctx = canvas.getContext('2d');
-
-function median(values) {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import {HEADERS,keyOf,magnitude,vectorInfo,colorRange,validateRows,parseCSV,toCSV,demoRecords,worldVector,deskPosition} from './classroom-data.js';
+import {readXlsx} from './xlsx-reader.js';
+const $=id=>document.getElementById(id),stage=$('stage');
+const state={records:[],rows:6,cols:8,heading:0,view:'oblique',selected:null,hover:null,marked:new Set(),locked:null,source:'',lastImportMs:null};
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xf7fafc);stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(38,1,.1,2000),controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.85;controls.minDistance=3;controls.maxDistance=200;
+let group=new THREE.Group();scene.add(group);const pickables=[],meshes=new Map(),raycaster=new THREE.Raycaster();
+const stops=['#440154','#3b528b','#21918c','#5ec962','#fde725'].map(c=>new THREE.Color(c));
+function heatColor(t){t=Math.max(0,Math.min(1,t));const x=t*4,i=Math.min(3,Math.floor(x));return stops[i].clone().lerp(stops[i+1],x-i);}
+function dispose(object){object.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){m.map?.dispose();m.dispose();}}});}
+function label(text,pos,size=.44,color='#375667'){
+ const c=document.createElement('canvas');c.width=512;c.height=96;const ctx=c.getContext('2d');ctx.clearRect(0,0,512,96);ctx.fillStyle=color;ctx.font='600 42px "Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';if(color==='#FFFFFF'){ctx.strokeStyle='#173744';ctx.lineWidth=4;ctx.strokeText(text,256,48);}ctx.fillText(text,256,48);
+ const tex=new THREE.CanvasTexture(c),s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false}));s.position.copy(pos);s.scale.set(size*5.33,size,1);group.add(s);return s;
 }
-
-function magnitude(record) {
-  return Math.hypot(record.bx, record.by, record.bz);
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);
+function fit(view=state.view){
+ state.view=view;const span=Math.max(state.rows,state.cols)*1.5;const aspect=stage.clientWidth/stage.clientHeight;
+ const distance=Math.max(8,span/(2*Math.tan(THREE.MathUtils.degToRad(19)))*Math.max(1,1/aspect)*1.15);
+ const a=state.heading*Math.PI/180;
+ let v=view==='top'?new THREE.Vector3(0,distance,.0001):view==='side'?new THREE.Vector3(distance*.9,distance*.26,distance*.15):new THREE.Vector3(distance*.18,distance*.75,distance*.88);
+ v.applyAxisAngle(new THREE.Vector3(0,1,0),-a);camera.up.set(0,1,0);controls.target.set(0,.35,0);
+ const corners=[];for(const col of [0,state.cols+1])for(const row of [-.5,state.rows+1])for(const y of [0,2])corners.push(new THREE.Vector3(...deskPosition(col,row,state.cols,state.rows,state.heading)).add(new THREE.Vector3(0,y,0)));
+ corners.push(new THREE.Vector3(-Math.max(state.cols,state.rows)*.78,0,-Math.max(state.cols,state.rows)*.7-2));
+ for(let iteration=0;iteration<4;iteration++){
+  camera.position.copy(v).add(controls.target);camera.lookAt(controls.target);camera.updateMatrixWorld();
+  const projected=corners.map(p=>p.clone().project(camera));const used=Math.max(...projected.map(p=>Math.max(Math.abs(p.x),Math.abs(p.y))));v.multiplyScalar(Math.max(.65,Math.min(1.5,used/.89)));
+ }
+ camera.position.copy(v).add(controls.target);camera.lookAt(controls.target);controls.update();
+ document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));
+ $('view-note').textContent=view==='top'?'俯视为水平投影，Bz仍保留 · 侧视观察竖直方向':'拖动旋转 · 滚轮缩放 · 点击固定桌位';
 }
-
-function keyOf(record) {
-  return `${record.row}-${record.col}`;
+function draw(){
+ scene.remove(group);dispose(group);group=new THREE.Group();scene.add(group);pickables.length=0;meshes.clear();
+ const records=new Map(state.records.map(r=>[keyOf(r),r])), range=colorRange(state.records,state.locked);
+ const heading=state.heading;
+ for(let row=1;row<=state.rows;row++)for(let col=1;col<=state.cols;col++){
+  const key=`${col}-${row}`,r=records.get(key),pos=new THREE.Vector3(...deskPosition(col,row,state.cols,state.rows,heading));
+  const color=r?heatColor((magnitude(r)-range.low)/(range.high-range.low)):new THREE.Color('#e5ebf0');
+  const tile=new THREE.Mesh(new THREE.BoxGeometry(1.16,.08,1.04),new THREE.MeshBasicMaterial({color}));tile.position.copy(pos);tile.rotation.y=-heading*Math.PI/180;tile.userData={key,r,col,row};group.add(tile);pickables.push(tile);
+  const outline=new THREE.LineSegments(new THREE.EdgesGeometry(tile.geometry),new THREE.LineBasicMaterial({color:'#afc1cc'}));outline.position.copy(pos);outline.rotation.copy(tile.rotation);group.add(outline);
+  let arrow=null;
+  if(r&&magnitude(r)>0){arrow=new THREE.Group();const material=new THREE.MeshBasicMaterial({color:0x173f54});const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.65,8),material);shaft.position.y=.325;const head=new THREE.Mesh(new THREE.ConeGeometry(.085,.25,12),material);head.position.y=.775;arrow.add(shaft,head);arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...worldVector(r)).normalize());arrow.position.copy(pos).add(new THREE.Vector3(0,1.02,0));arrow.setColor=c=>material.color.set(c);group.add(arrow);}
+  label(`${row}排${col}列`,pos.clone().add(new THREE.Vector3(0,-.13,0)),.58,r?'#FFFFFF':'#405463');
+  if(state.marked.has(key))label('待复测',pos.clone().add(new THREE.Vector3(0,1.7,0)),.29,'#9e530d');
+  meshes.set(key,{tile,outline,arrow,color});
+ }
+ const front=new THREE.Vector3(...deskPosition((state.cols+1)/2,0,state.cols,state.rows,heading));label('讲台',front,.5);
+ const north=new THREE.Vector3(-Math.max(state.cols,state.rows)*.78,0,-Math.max(state.cols,state.rows)*.7);
+ const northArrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,-1),north,1.5,0x206b83,.3,.18);group.add(northArrow);label('北 N',north.clone().add(new THREE.Vector3(0,.2,-1.85)),.36);
+ $('empty-state').style.display=state.records.length?'none':'grid';$('stat-count').textContent=state.records.length;
+ for(const [id,value] of [['stat-min',range.min],['stat-max',range.max],['stat-range',range.span]])$(id).textContent=state.records.length?`${value.toFixed(2)} μT`:'—';
+ $('scale-low').textContent=`${range.low.toFixed(1)} μT`;$('scale-high').textContent=`${range.high.toFixed(1)} μT`;
+ $('present-scale-low').textContent=$('scale-low').textContent;$('present-scale-high').textContent=$('scale-high').textContent;
+ $('source-label').textContent=state.source||'上传后显示本次数据';$('rows').value=state.rows;$('cols').value=state.cols;
+ refreshSelection();renderer.render(scene,camera);
 }
-
-function analysis() {
-  if (!state.records.length) return { baseline: [0, 0, 0], residuals: [], threshold: Infinity, anomalies: new Set() };
-  const baseline = [
-    median(state.records.map((r) => r.bx)),
-    median(state.records.map((r) => r.by)),
-    median(state.records.map((r) => r.bz)),
-  ];
-  const residuals = state.records.map((r) => Math.hypot(r.bx - baseline[0], r.by - baseline[1], r.bz - baseline[2]));
-  const center = median(residuals);
-  const mad = median(residuals.map((v) => Math.abs(v - center)));
-  const threshold = Math.max(5, center + 3 * 1.4826 * mad);
-  const anomalies = new Set(state.records.filter((_, i) => residuals[i] > threshold).map(keyOf));
-  return { baseline, residuals, threshold, anomalies };
+function refreshSelection(){
+ const key=state.hover||state.selected;
+ for(const [k,m]of meshes){const active=k===key;m.outline.material.color.set(active?'#df7314':'#afc1cc');m.arrow?.setColor(active?0xe87716:0x173f54);m.tile.material.color.copy(m.color);if(active)m.tile.material.color.lerp(new THREE.Color('#ffffff'),.18);}
+ const entry=meshes.get(key)?.tile.userData,r=entry?.r;
+ if(!entry){$('selected-title').textContent='选择一个桌位';$('selected-data').textContent='悬停查看，点击固定详情。';$('mark-point').disabled=true;return;}
+ $('selected-title').textContent=`第${entry.row}排 第${entry.col}列${state.selected===key?' · 已固定':''}`;
+ $('mark-point').disabled=!r;$('mark-point').textContent=state.marked.has(key)?'取消待复测标记':'标记待复测';
+ if(!r){$('selected-data').textContent='未采样。缺失数据未补零。';return;}
+ const info=vectorInfo(r);$('selected-data').textContent=`Bx ${r.bx.toFixed(2)} · By ${r.by.toFixed(2)} · Bz ${r.bz.toFixed(2)} μT   |B| ${info.total.toFixed(2)} μT   磁倾角 ${info.inclination===null?'未定义':info.inclination.toFixed(1)+'°（向下为正）'}${info.unstable?' · 小于0.1 μT，方向易受噪声影响':''}`;
 }
-
-function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+function hit(e){const rect=renderer.domElement.getBoundingClientRect();raycaster.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);return raycaster.intersectObjects(pickables)[0]?.object.userData.key||null;}
+renderer.domElement.addEventListener('pointermove',e=>{state.hover=hit(e);renderer.domElement.style.cursor=state.hover?'pointer':'grab';refreshSelection();});
+renderer.domElement.addEventListener('pointerleave',()=>{state.hover=null;refreshSelection();});
+let down=null;renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('click',e=>{if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<7){state.selected=hit(e);state.hover=null;refreshSelection();}});
+$('unpin').onclick=()=>{state.selected=null;state.hover=null;refreshSelection();};
+$('mark-point').onclick=()=>{const key=state.hover||state.selected;if(!key)return;state.marked.has(key)?state.marked.delete(key):state.marked.add(key);state.selected=key;draw();};
+function showErrors(errors){$('errors').replaceChildren(...errors.map(msg=>{const li=document.createElement('li');li.textContent=msg;return li;}));$('errors').hidden=!errors.length;}
+function persist(){try{localStorage.setItem('magnetic-classroom-map-v2',JSON.stringify({records:state.records,source:state.source,heading:state.heading,rows:state.rows,cols:state.cols}));}catch{}}
+function table(){const body=$('records-body');body.replaceChildren();for(const r of state.records.slice().sort((a,b)=>a.row-b.row||a.col-b.col)){
+ const tr=document.createElement('tr'),td=document.createElement('td'),b=document.createElement('button');b.textContent=`${r.row}排${r.col}列`;b.onclick=()=>{state.selected=keyOf(r);state.hover=null;refreshSelection();};td.append(b);tr.append(td);
+ for(const n of [r.bx,r.by,r.bz,magnitude(r)]){const c=document.createElement('td');c.textContent=n.toFixed(2);tr.append(c);}body.append(tr);
+}}
+function accept(rows,source,start=performance.now()){
+ const result=validateRows(rows);showErrors(result.errors);
+ if(result.errors.length){$('import-status').textContent=`导入未完成，原数据保持不变。请修正${result.errors.length}项问题。`;return false;}
+ state.records=result.records;state.source=source;state.rows=Math.max(...state.records.map(r=>r.row));state.cols=Math.max(...state.records.map(r=>r.col));state.selected=null;state.hover=null;state.marked.clear();
+ fit();draw();table();persist();state.lastImportMs=performance.now()-start;
+ const extreme=state.records.filter(r=>magnitude(r)>1000).length;
+ $('import-status').textContent=`已导入 ${state.records.length} 桌 · ${state.rows}排 × ${state.cols}列${extreme?' · '+extreme+'桌超过1000 μT，已保留，请复核单位及环境':''}`;
+ document.body.dataset.importState='ready';return true;
 }
-
-function restore() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (Array.isArray(saved)) state.records = saved.filter(validRecord);
-  } catch {
-    state.records = [];
-  }
-}
-
-function validRecord(record) {
-  return Number.isInteger(record?.row) && Number.isInteger(record?.col)
-    && [record.bx, record.by, record.bz].every(Number.isFinite);
-}
-
-function toast(message) {
-  const el = $('toast');
-  el.textContent = message;
-  el.classList.add('show');
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => el.classList.remove('show'), 1800);
-}
-
-function colorAt(t, alpha = 1) {
-  const stops = [
-    [0, [37, 99, 166]],
-    [0.38, [21, 160, 140]],
-    [0.7, [227, 179, 65]],
-    [1, [189, 62, 66]],
-  ];
-  const x = Math.max(0, Math.min(1, t));
-  let a = stops[0], b = stops.at(-1);
-  for (let i = 1; i < stops.length; i++) {
-    if (x <= stops[i][0]) { a = stops[i - 1]; b = stops[i]; break; }
-  }
-  const f = (x - a[0]) / Math.max(1e-9, b[0] - a[0]);
-  const rgb = a[1].map((v, i) => Math.round(v + (b[1][i] - v) * f));
-  return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
-}
-
-function canvasMetrics() {
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  const rect = canvas.getBoundingClientRect();
-  const width = Math.max(320, Math.round(rect.width * dpr));
-  const height = Math.max(300, Math.round(rect.height * dpr));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { width: rect.width, height: rect.height };
-}
-
-function draw() {
-  const { width, height } = canvasMetrics();
-  ctx.clearRect(0, 0, width, height);
-  $('empty-state').style.display = state.records.length ? 'none' : 'grid';
-  if (!state.records.length) return;
-
-  const rows = Math.max(...state.records.map((r) => r.row), 1);
-  const cols = Math.max(...state.records.map((r) => r.col), 1);
-  const pad = { left: 54, right: 30, top: 32, bottom: 46 };
-  const plotW = width - pad.left - pad.right;
-  const plotH = height - pad.top - pad.bottom;
-  const cellW = plotW / cols;
-  const cellH = plotH / rows;
-  const values = state.records.map(magnitude);
-  const min = Math.min(...values), max = Math.max(...values);
-  const range = Math.max(1e-9, max - min);
-  const lookup = new Map(state.records.map((r) => [keyOf(r), r]));
-  const info = analysis();
-
-  ctx.fillStyle = '#fbfcfd';
-  ctx.fillRect(pad.left, pad.top, plotW, plotH);
-  for (let row = 1; row <= rows; row++) {
-    for (let col = 1; col <= cols; col++) {
-      const record = lookup.get(`${row}-${col}`);
-      const x = pad.left + (col - 1) * cellW;
-      const y = pad.top + (row - 1) * cellH;
-      if (state.mode === 'magnitude' && record) {
-        const t = (magnitude(record) - min) / range;
-        ctx.fillStyle = colorAt(t, 0.84);
-        ctx.fillRect(x + 1, y + 1, Math.max(0, cellW - 2), Math.max(0, cellH - 2));
-      }
-      ctx.strokeStyle = '#d5dfe4';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, cellW, cellH);
-    }
-  }
-
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#53646e';
-  for (let col = 1; col <= cols; col++) ctx.fillText(`${col}列`, pad.left + (col - 0.5) * cellW, pad.top - 15);
-  ctx.textAlign = 'right';
-  for (let row = 1; row <= rows; row++) ctx.fillText(`${row}排`, pad.left - 9, pad.top + (row - 0.5) * cellH);
-
-  for (const record of state.records) {
-    const x = pad.left + (record.col - 0.5) * cellW;
-    const y = pad.top + (record.row - 0.5) * cellH;
-    const selected = keyOf(record) === state.selectedKey;
-    if (state.mode === 'vector') drawVector(x, y, record, info.baseline, Math.min(cellW, cellH) * 0.36);
-    if (state.mode === 'magnitude') {
-      ctx.fillStyle = magnitude(record) > (min + max) / 2 ? '#fff' : '#18313d';
-      ctx.font = `${Math.max(10, Math.min(14, cellW * 0.16))}px system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(magnitude(record).toFixed(1), x, y);
-    }
-    if (info.anomalies.has(keyOf(record))) {
-      ctx.strokeStyle = '#b42318';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(x, y, Math.max(8, Math.min(cellW, cellH) * 0.24), 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    if (selected) {
-      ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pad.left + (record.col - 1) * cellW + 3, pad.top + (record.row - 1) * cellH + 3, cellW - 6, cellH - 6);
-    }
-  }
-
-  ctx.fillStyle = '#53646e';
-  ctx.font = '11px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(state.mode === 'magnitude' ? `|B| 范围 ${min.toFixed(1)} 至 ${max.toFixed(1)} μT` : '箭头方向表示 (Bx, By)，长度按相对水平分量缩放', pad.left, height - 18);
-}
-
-function drawVector(x, y, record, baseline, maxLength) {
-  const dx = record.bx, dy = -record.by;
-  const horizontal = Math.hypot(dx, dy);
-  const baseHorizontal = Math.max(1, Math.hypot(baseline[0], baseline[1]));
-  const length = Math.max(8, Math.min(maxLength, maxLength * horizontal / baseHorizontal));
-  const ux = horizontal ? dx / horizontal : 0;
-  const uy = horizontal ? dy / horizontal : 0;
-  const x2 = x + ux * length, y2 = y + uy * length;
-  ctx.strokeStyle = '#0f766e';
-  ctx.fillStyle = '#0f766e';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
-  const head = 6;
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - ux * head - uy * head * 0.65, y2 - uy * head + ux * head * 0.65);
-  ctx.lineTo(x2 - ux * head + uy * head * 0.65, y2 - uy * head - ux * head * 0.65);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
-}
-
-function updateStats() {
-  const info = analysis();
-  const count = state.records.length;
-  $('stat-count').textContent = count;
-  $('stat-mean').textContent = count ? `${(state.records.reduce((s, r) => s + magnitude(r), 0) / count).toFixed(1)} μT` : '--';
-  $('stat-base').textContent = count ? `${info.baseline.map((v) => v.toFixed(1)).join(', ')}` : '--';
-  $('stat-anomaly').textContent = info.anomalies.size;
-}
-
-function renderTable() {
-  const body = $('records-body');
-  body.innerHTML = '';
-  const info = analysis();
-  for (const record of [...state.records].sort((a, b) => a.row - b.row || a.col - b.col)) {
-    const tr = document.createElement('tr');
-    if (keyOf(record) === state.selectedKey) tr.classList.add('selected');
-    if (info.anomalies.has(keyOf(record))) tr.title = '异常候选，请现场复核';
-    tr.innerHTML = `<td>${record.row}-${record.col}</td><td>${record.bx.toFixed(1)}</td><td>${record.by.toFixed(1)}</td><td>${record.bz.toFixed(1)}</td><td>${magnitude(record).toFixed(1)}</td><td class="note" title="${escapeHtml(record.note)}">${escapeHtml(record.note || '')}</td><td><button class="row-delete" type="button" aria-label="删除 ${record.row} 排 ${record.col} 列">×</button></td>`;
-    tr.onclick = (event) => {
-      if (event.target.closest('.row-delete')) return;
-      selectRecord(record);
-    };
-    tr.querySelector('.row-delete').onclick = () => removeRecord(record);
-    body.appendChild(tr);
-  }
-}
-
-function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
-}
-
-function render() {
-  updateStats();
-  renderTable();
-  draw();
-  document.body.dataset.records = String(state.records.length);
-  document.body.dataset.anomalies = String(analysis().anomalies.size);
-  document.body.dataset.mode = state.mode;
-}
-
-function selectRecord(record) {
-  state.selectedKey = keyOf(record);
-  $('row').value = record.row;
-  $('col').value = record.col;
-  $('bx').value = record.bx;
-  $('by').value = record.by;
-  $('bz').value = record.bz;
-  $('note').value = record.note || '';
-  render();
-}
-
-function resetForm() {
-  state.selectedKey = null;
-  $('entry-form').reset();
-  $('row').value = 1;
-  $('col').value = 1;
-  render();
-}
-
-function removeRecord(record) {
-  state.records = state.records.filter((item) => keyOf(item) !== keyOf(record));
-  if (state.selectedKey === keyOf(record)) state.selectedKey = null;
-  persist();
-  render();
-  toast('已删除该采样点');
-}
-
-function parseCsv(text) {
-  const rows = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
-  if (!rows.length) return [];
-  const split = (line) => line.split(',').map((v) => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-  const header = split(rows[0]).map((x) => x.toLowerCase());
-  const index = (names) => names.map((name) => header.indexOf(name)).find((i) => i >= 0);
-  const cols = { row: index(['row', '排']), col: index(['col', 'column', '列']), bx: index(['bx']), by: index(['by']), bz: index(['bz']), note: index(['note', '备注']) };
-  if ([cols.row, cols.col, cols.bx, cols.by, cols.bz].some((i) => i == null || i < 0)) throw new Error('CSV 表头需包含 row,col,bx,by,bz');
-  return rows.slice(1).map(split).map((values) => ({
-    row: parseInt(values[cols.row], 10), col: parseInt(values[cols.col], 10),
-    bx: parseFloat(values[cols.bx]), by: parseFloat(values[cols.by]), bz: parseFloat(values[cols.bz]),
-    note: cols.note >= 0 ? values[cols.note] || '' : '',
-  })).filter(validRecord);
-}
-
-function csvEscape(value) {
-  const text = String(value ?? '');
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-function exportCsv() {
-  if (!state.records.length) { toast('暂无可导出的数据'); return; }
-  const lines = ['row,col,bx,by,bz,note', ...[...state.records].sort((a, b) => a.row - b.row || a.col - b.col)
-    .map((r) => [r.row, r.col, r.bx, r.by, r.bz, csvEscape(r.note)].join(','))];
-  const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = '教室磁场数据.csv';
-  link.click();
-  URL.revokeObjectURL(link.href);
-  toast('CSV 已导出');
-}
-
-function demoRecords() {
-  const out = [];
-  for (let row = 1; row <= 6; row++) {
-    for (let col = 1; col <= 8; col++) {
-      const bx = 2.2 + 0.22 * col - 0.11 * row;
-      const by = 24.8 + 0.18 * row + 0.08 * col;
-      const bz = -37.4 + 0.16 * col - 0.12 * row;
-      out.push({ row, col, bx, by, bz, note: '' });
-    }
-  }
-  Object.assign(out.find((r) => r.row === 3 && r.col === 5), { bx: 16.5, by: 31.2, bz: -50.8, note: '示例：靠近铁磁物体' });
-  Object.assign(out.find((r) => r.row === 5 && r.col === 2), { bx: -9.4, by: 19.1, bz: -25.2, note: '示例：待现场复核' });
-  return out;
-}
-
-$('entry-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const record = {
-    row: parseInt($('row').value, 10), col: parseInt($('col').value, 10),
-    bx: parseFloat($('bx').value), by: parseFloat($('by').value), bz: parseFloat($('bz').value),
-    note: $('note').value.trim(),
-  };
-  if (!validRecord(record)) { toast('请填写有效的座位与三分量数据'); return; }
-  const existing = state.records.findIndex((r) => keyOf(r) === keyOf(record));
-  if (existing >= 0) state.records[existing] = record;
-  else state.records.push(record);
-  state.selectedKey = keyOf(record);
-  persist();
-  render();
-  toast(existing >= 0 ? '采样点已更新' : '采样点已添加');
+function rowsFrom(records){return [{rowNumber:1,values:HEADERS},...records.map((r,i)=>({rowNumber:i+2,values:[r.col,r.row,r.bx,r.by,r.bz]}))];}
+let workbookSheets=[],pendingName='';
+$('file-input').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;const start=performance.now();pendingName=file.name;
+ try{
+  if(file.size>16000000)throw new Error('文件超过16 MB，请只保留课堂数据再上传。');
+  if(file.name.toLowerCase().endsWith('.csv')){ $('sheet-choice').hidden=true;accept(parseCSV(await file.text()),`导入文件：${file.name}`,start);}
+  else if(file.name.toLowerCase().endsWith('.xlsx')){
+   workbookSheets=readXlsx(await file.arrayBuffer());const preferred=workbookSheets.find(s=>s.name==='磁场数据');
+   $('sheet-select').replaceChildren(...workbookSheets.map((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=s.name;return o;}));
+   $('sheet-choice').hidden=Boolean(preferred)||workbookSheets.length===1;
+   if(preferred||workbookSheets.length===1)accept((preferred||workbookSheets[0]).rows,`导入文件：${file.name}`,start);
+   else $('import-status').textContent='请选择包含五列磁场数据的工作表。';
+  }else throw new Error('请选择.xlsx或.csv文件。');
+ }catch(err){showErrors([err.message]);$('import-status').textContent='读取失败，原数据保持不变。';}
+ e.target.value='';
 });
-
-$('reset-form').onclick = resetForm;
-$('export-csv').onclick = exportCsv;
-$('load-demo').onclick = () => {
-  state.records = demoRecords();
-  state.selectedKey = null;
-  persist();
-  render();
-  toast('已加载 48 个示例点');
+$('import-sheet').onclick=()=>accept(workbookSheets[Number($('sheet-select').value)].rows,`导入文件：${pendingName}`);
+$('load-demo').onclick=()=>accept(rowsFrom(demoRecords()),'模拟示例 · 非课堂实测');
+for(const id of ['rows','cols'])$(id).onchange=()=>{
+ const n=Number($(id).value),min=state.records.length?Math.max(...state.records.map(r=>r[id==='rows'?'row':'col'])):1;
+ if(!Number.isInteger(n)||n<min||n>100||n*(id==='rows'?state.cols:state.rows)>10000){$(id).value=state[id];showErrors([`总${id==='rows'?'排':'列'}数须为${min}至100，且不能裁掉已有数据。`]);return;}
+ showErrors([]);state[id]=n;draw();fit();persist();
 };
-$('clear-all').onclick = () => {
-  if (!state.records.length) return;
-  if (!confirm('确定清空本机保存的全部测量数据吗？')) return;
-  state.records = [];
-  state.selectedKey = null;
-  persist();
-  resetForm();
-  toast('全部数据已清空');
-};
-$('csv-input').onchange = async (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    const imported = parseCsv(await file.text());
-    const merged = new Map(state.records.map((r) => [keyOf(r), r]));
-    imported.forEach((r) => merged.set(keyOf(r), r));
-    state.records = [...merged.values()];
-    persist();
-    render();
-    toast(`已导入 ${imported.length} 个采样点`);
-  } catch (error) {
-    toast(error.message || 'CSV 导入失败');
-  } finally {
-    event.target.value = '';
-  }
-};
-
-document.querySelectorAll('.mode-switch button').forEach((button) => {
-  button.onclick = () => {
-    state.mode = button.dataset.mode;
-    document.querySelectorAll('.mode-switch button').forEach((item) => {
-      const active = item === button;
-      item.classList.toggle('active', active);
-      item.setAttribute('aria-selected', String(active));
-    });
-    $('canvas-caption').textContent = state.mode === 'magnitude'
-      ? '热力图按当前样本的磁场大小范围着色；红圈仅表示偏离班级基线较大的候选点，需要回到现场检查。'
-      : '箭头显示手机坐标中的水平分量 (Bx, By)。只有所有手机姿态一致时，箭头方向才可比较。';
-    render();
-  };
-});
-
-canvas.addEventListener('click', (event) => {
-  if (!state.records.length) return;
-  const rect = canvas.getBoundingClientRect();
-  const rows = Math.max(...state.records.map((r) => r.row));
-  const cols = Math.max(...state.records.map((r) => r.col));
-  const pad = { left: 54, right: 30, top: 32, bottom: 46 };
-  const col = Math.floor((event.clientX - rect.left - pad.left) / ((rect.width - pad.left - pad.right) / cols)) + 1;
-  const row = Math.floor((event.clientY - rect.top - pad.top) / ((rect.height - pad.top - pad.bottom) / rows)) + 1;
-  const record = state.records.find((r) => r.row === row && r.col === col);
-  if (record) selectRecord(record);
-});
-
-window.addEventListener('resize', draw);
-restore();
-render();
-
-window.__CLASSROOM_MAP__ = { analysis, parseCsv, demoRecords, magnitude };
+$('heading').oninput=e=>{state.heading=Number(e.target.value);$('heading-value').textContent=`${state.heading}°`;draw();fit();persist();};
+$('lock-scale').onchange=e=>{const r=colorRange(state.records,state.locked);state.locked=e.target.checked?[r.low,r.high]:null;draw();};
+for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>fit(b.dataset.view);
+$('reset-view').onclick=()=>fit('oblique');
+$('fullscreen').onclick=async()=>{if(document.fullscreenElement){await document.exitFullscreen();}else{document.body.classList.add('presenting');try{await document.documentElement.requestFullscreen();}catch{document.body.classList.toggle('presenting');}}resize();fit();};
+document.addEventListener('fullscreenchange',()=>{document.body.classList.toggle('presenting',Boolean(document.fullscreenElement));$('fullscreen').textContent=document.fullscreenElement?'退出全屏':'全屏';resize();fit();});
+$('manual-form').onsubmit=e=>{e.preventDefault();const fd=new FormData(e.target),r=Object.fromEntries(['col','row','bx','by','bz'].map(k=>[k,Number(fd.get(k))]));accept(rowsFrom([...state.records,r]),state.source?state.source+'（含补录）':'手工采集');};
+$('export-csv').onclick=()=>{if(!state.records.length){showErrors(['没有可导出的数据。']);return;}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([toCSV(state.records)],{type:'text/csv;charset=utf-8'}));a.download='教室磁场数据.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);};
+$('clear-data').onclick=()=>{state.records=[];state.source='';state.selected=null;state.hover=null;state.marked.clear();state.locked=null;$('lock-scale').checked=false;showErrors([]);draw();table();persist();$('import-status').textContent='当前数据已清空，可重新上传原文件。';};
+try{const saved=JSON.parse(localStorage.getItem('magnetic-classroom-map-v2')||'null');if(saved?.records?.length&&validateRows(rowsFrom(saved.records)).errors.length===0){Object.assign(state,{records:saved.records,source:saved.source+' · 本机保存',rows:saved.rows,cols:saved.cols,heading:saved.heading||0});$('heading').value=state.heading;$('heading-value').textContent=state.heading+'°';$('import-status').textContent=`已恢复本机保存的${state.records.length}桌数据`;table();}}catch{}
+resize();fit();draw();
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}animate();
+window.__CLASSROOM_MAP__={state,accept,rowsFrom,fit,renderer,scene,camera,meshes,screenshot:()=>renderer.domElement.toDataURL('image/png'),project:(col,row)=>{const p=new THREE.Vector3(...deskPosition(col,row,state.cols,state.rows,state.heading)).project(camera);const rect=renderer.domElement.getBoundingClientRect();return{x:rect.left+(p.x+1)*rect.width/2,y:rect.top+(1-p.y)*rect.height/2};}};
