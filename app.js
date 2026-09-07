@@ -1164,23 +1164,39 @@ function traceProjectedLine(evalB, sec, size, seedU, seedV, sign, step) {
   return { pts, closed: false };
 }
 
-function generateProjectedStreamlines(evalB, sec, size) {
+function generateProjectedStreamlines(evalB, sec, size, field = null) {
   const lines = [];
   const occupied = [];
   const minSpacing = size / 18;
   const step = Math.max(0.018, size / 360);
   const candidates = [];
   for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 9; col++) {
-      const offset = row % 2 ? 0.5 : 0;
+    // Center both staggered rows exactly: nine integer positions or eight
+    // half-integer positions. The old /8.5 grid biased seeds to one side,
+    // selecting different flux contours around otherwise identical wires.
+    const offset = row % 2 ? 0.5 : 0;
+    for (let col = 0; col < (offset ? 8 : 9); col++) {
       candidates.push([
-        ((col + offset) / 8.5 - 0.5) * size * 0.84,
+        ((col + offset) / 8 - 0.5) * size * 0.84,
         (row / 8 - 0.5) * size * 0.84,
       ]);
     }
   }
   candidates.sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
-  for (const [u, v] of candidates) {
+  // Give each visible wire the same source-relative starting distance before
+  // filling the rest of the section. A coarse global grid can miss both small
+  // inner loops even after centering it. Trace each seed in the actual field:
+  // unequal currents must retain their physically different contour shapes.
+  if (field?.d && Math.abs(sec.n.y) > 1 - 1e-9) {
+    const anchors = [];
+    for (const [side, visible] of [[-1, field.showLeft], [1, field.showRight]]) {
+      if (!visible) continue;
+      const point = new THREE.Vector3(side * field.d * 0.65, sec.center.y, 0).sub(sec.center);
+      anchors.push([point.dot(sec.U), point.dot(sec.V), true]);
+    }
+    candidates.unshift(...anchors);
+  }
+  for (const [u, v, sourceAnchor] of candidates) {
     if (lines.length >= 28) break;
     if (occupied.some(([ou, ov]) => Math.hypot(u - ou, v - ov) < minSpacing)) continue;
     const forward = traceProjectedLine(evalB, sec, size, u, v, 1, step);
@@ -1191,7 +1207,7 @@ function generateProjectedStreamlines(evalB, sec, size) {
     }
     if (pts.length < 18) continue;
     const box = new THREE.Box3().setFromPoints(pts);
-    if (box.getSize(_tmp).length() < size * 0.10) continue;
+    if (box.getSize(_tmp).length() < size * (sourceAnchor ? 0.03 : 0.10)) continue;
     lines.push(decimateLine(pts, forward.closed, 1200));
     for (let i = 0; i < pts.length; i += 16) {
       const rel = _b1.copy(pts[i]).sub(sec.center);
@@ -1804,7 +1820,7 @@ function updateVisualization() {
   // 仅截面模式：直接对面内投影场 B∥ = B − (B·n)n 做 RK4 积分。
   // 这些是真正的截面投影流线，不是对三维曲线的容差裁剪。
   if (SECTION.only && !STATE.locked) {
-    const projected = generateProjectedStreamlines(currentField.evalB, sec, size);
+    const projected = generateProjectedStreamlines(currentField.evalB, sec, size, currentField);
     for (const pts of projected) {
       sectionLineGroup.add(makeWideLine(pts, PAL.line, 2.45));
     }
