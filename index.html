@@ -120,10 +120,11 @@ select {
   border: 1px solid #c6e7e2; padding: 7px 12px; border-radius: 2px; font-size: 12.5px; font-weight: 700;
 }
 .canvas-card {
-  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  position: relative; flex: 1; min-height: 0; overflow: hidden; container-type: inline-size;
   background: #fcfdfe; border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 4px;
 }
 #canvas-container { position: absolute; inset: 0; }
+.canvas-card.is-expanded { position: fixed; inset: 0; z-index: 1000; border-radius: 0; }
 #canvas-container canvas { display: block; }
 .canvas-overlay { position: absolute; inset: 0; pointer-events: none; }
 .canvas-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; pointer-events: auto; }
@@ -156,13 +157,22 @@ select {
 }
 .sample-readout strong { color: var(--brand-dark); font-size: 14px; font-variant-numeric: tabular-nums; }
 .pred-lock {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  padding: 16px 22px; background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line);
+  position: absolute; top: 12px; left: 12px; max-width: min(300px, calc(100% - 112px));
+  padding: 10px 12px; background: rgba(255, 255, 255, 0.95); border: 1px solid var(--line);
   border-radius: 6px; box-shadow: var(--shadow); color: #2c3840; font-size: 13.5px;
-  display: none; text-align: center; line-height: 1.7; pointer-events: none;
+  display: none; text-align: left; line-height: 1.6; pointer-events: none;
 }
 .pred-lock.show { display: block; }
 .pred-lock strong { color: var(--brand-dark); }
+.canvas-card[data-locked="true"] .sample-readout { display: none; }
+.canvas-card[aria-busy="true"] .sample-readout { display: none; }
+.compute-status { position: absolute; left: 12px; top: 12px; max-width: calc(100% - 112px); padding: 10px 12px; background: rgba(255,255,255,.95); border: 1px solid var(--line); border-radius: 6px; font-size: 14px; line-height: 1.6; }
+.compute-status:empty { display: none; }
+.primary-action:disabled { opacity: .7; cursor: progress; }
+@container (max-width: 400px) {
+  .pred-lock { max-width: calc(100% - 100px); padding: 8px 10px; }
+}
+
 
 /* ---------- right AI panel ---------- */
 .ai-title { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
@@ -309,6 +319,7 @@ select {
         <div class="heat-legend"><span id="heat-min">0</span><div class="heat-bar"></div><span>P98 <b id="heat-max">--</b></span></div>
         <div class="sample-readout" id="sample-readout">点击磁感线任意位置，显示该处磁场方向</div>
         <div class="pred-lock" id="pred-lock"></div>
+        <div class="compute-status" id="compute-status" role="status" aria-live="polite"></div>
       </div>
     </div>
   </section>
@@ -322,6 +333,6 @@ select {
   }
 }
 </script>
-<script type="module" src="app.js?v=20260905-course"></script>
+<script type="module" src="app.js?v=20260913-worker"></script>
 </body>
 </html>

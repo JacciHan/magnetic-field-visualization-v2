@@ -1,0 +1,2330 @@
+[
+  {
+    "id": "loop",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      0.0,
+      -314.1592653589793,
+      0.0
+    ],
+    "referenceConvergence": 0.0
+  },
+  {
+    "id": "loop",
+    "point": [
+      0,
+      1,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      9.741507719047546e-15,
+      -111.07207345395994,
+      5.480662504958022e-15
+    ],
+    "referenceConvergence": 8.956606901781496e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      0.5,
+      0.3,
+      0.2
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      -87.00460868754315,
+      -304.86435669126706,
+      -34.80184347501717
+    ],
+    "referenceConvergence": 1.2596544243413803e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      1.08,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      0.0,
+      1030.4806778884554,
+      0.0
+    ],
+    "referenceConvergence": 0.0
+  },
+  {
+    "id": "loop",
+    "point": [
+      0.92,
+      0.05,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      -578.1491208404691,
+      -1117.2942780057956,
+      -9.33277312943716e-15
+    ],
+    "referenceConvergence": 1.0540624425808925e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 2,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      0.0,
+      -157.07963267948966,
+      0.0
+    ],
+    "referenceConvergence": 0.0
+  },
+  {
+    "id": "loop",
+    "point": [
+      0,
+      2,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 2,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      4.870753859523773e-15,
+      -55.53603672697997,
+      2.740331252479011e-15
+    ],
+    "referenceConvergence": 8.956606901781496e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      1,
+      0.6,
+      0.2
+    ],
+    "params": {
+      "current": 50,
+      "radius": 2,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      -41.58662484039692,
+      -151.30419263824388,
+      -8.317324968079419
+    ],
+    "referenceConvergence": 9.441890792922415e-16
+  },
+  {
+    "id": "loop",
+    "point": [
+      2.08,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 2,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      0.0,
+      1120.801650327291,
+      0.0
+    ],
+    "referenceConvergence": 1.4200690440077834e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      1.92,
+      0.05,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 2,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      -571.2503346973477,
+      -1023.2757405572336,
+      1.0218364740259663e-15
+    ],
+    "referenceConvergence": 8.73083246095711e-16
+  },
+  {
+    "id": "loop",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 4,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      0.0,
+      -78.53981633974483,
+      0.0
+    ],
+    "referenceConvergence": 0.0
+  },
+  {
+    "id": "loop",
+    "point": [
+      0,
+      4,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 4,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      2.4353769297618866e-15,
+      -27.768018363489986,
+      1.3701656262395055e-15
+    ],
+    "referenceConvergence": 8.956606901781496e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      2,
+      1.2,
+      0.2
+    ],
+    "params": {
+      "current": 50,
+      "radius": 4,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      -20.560794170591354,
+      -75.49993967952625,
+      -2.0560794170591525
+    ],
+    "referenceConvergence": 2.3619150208379202e-15
+  },
+  {
+    "id": "loop",
+    "point": [
+      4.08,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 4,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      0.0,
+      1176.0606432828179,
+      0.0
+    ],
+    "referenceConvergence": 1.9059572138586332e-08
+  },
+  {
+    "id": "loop",
+    "point": [
+      3.92,
+      0.05,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 4,
+      "direction": "正向",
+      "density": "丰富"
+    },
+    "reference": [
+      -566.8995476696505,
+      -969.09162630434,
+      -9.128405834631965e-15
+    ],
+    "referenceConvergence": 3.0174293861830056e-10
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      9.803446843143943e-15,
+      17240.91824591196,
+      1.7403503839193804e-14
+    ],
+    "referenceConvergence": 1.3715546904025818e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      2.5,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -2.470892424399849e-13,
+      9629.120067411139,
+      -1.4297962250293124e-14
+    ],
+    "referenceConvergence": 1.6056929273190234e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      2.6,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -2.4653285643998814e-13,
+      8975.871926586371,
+      -3.625723809660669e-14
+    ],
+    "referenceConvergence": 1.4996340252461978e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0.75,
+      0.7,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      427.8588465803313,
+      17112.89006825283,
+      -3.812880670732484e-14
+    ],
+    "referenceConvergence": 1.392466487600616e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.43,
+      2.3,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      6529.06893295087,
+      14477.349463382361,
+      5.989537766596268e-14
+    ],
+    "referenceConvergence": 5.887791522188499e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.57,
+      2.3,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      6359.9075771310245,
+      -3513.0458388752218,
+      3.191155954951727e-14
+    ],
+    "referenceConvergence": 1.2428038096608565e-13
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.6,
+      2.6,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.5,
+      "nLoops": 160,
+      "length": 5,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      7575.939620586341,
+      1697.0610600004393,
+      -2.0895438994146717e-14
+    ],
+    "referenceConvergence": 1.1443828517099214e-13
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      2.5337121240280017e-14,
+      12191.17020556728,
+      2.1376409357230766e-15
+    ],
+    "referenceConvergence": 1.1190411362632763e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      4,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -2.277992055430429e-13,
+      6234.665775606735,
+      6.520334921748966e-14
+    ],
+    "referenceConvergence": 6.053898101051601e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      4.1,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -1.9929868601439073e-13,
+      5610.642665901081,
+      -9.603746771457467e-15
+    ],
+    "referenceConvergence": 6.694800127765597e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0.5,
+      0.7,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      23.311798754747684,
+      12168.716777863228,
+      4.4686427527540295e-14
+    ],
+    "referenceConvergence": 1.7341959056941248e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0.9299999999999999,
+      3.8,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      3362.655925006001,
+      9456.976234910611,
+      3.6410368056458954e-14
+    ],
+    "referenceConvergence": 5.911181812413185e-13
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.07,
+      3.8,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      3262.9195496950074,
+      -1820.9400210754611,
+      -2.776903509115351e-14
+    ],
+    "referenceConvergence": 1.5443622562666e-12
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.1,
+      4.1,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1,
+      "nLoops": 160,
+      "length": 8,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      3990.48967926004,
+      1143.8535061516134,
+      -2.3557103826111747e-14
+    ],
+    "referenceConvergence": 2.1272884792100799e-13
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -1.4457220954104794e-15,
+      18914.315322832084,
+      -8.175423235040342e-15
+    ],
+    "referenceConvergence": 1.3079117843678623e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      2,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -2.893343245977333e-13,
+      11512.772611444498,
+      1.708220307702742e-14
+    ],
+    "referenceConvergence": 8.689863098838538e-15
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0,
+      2.1,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      -2.6011821669830687e-13,
+      10840.686082636199,
+      4.187187173899967e-14
+    ],
+    "referenceConvergence": 8.72522948779771e-15
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      0.875,
+      0.7,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      1064.748652320027,
+      18798.00327037379,
+      -3.450740809147772e-14
+    ],
+    "referenceConvergence": 1.169883582930925e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.68,
+      1.8,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      8537.59798475765,
+      17542.291681246716,
+      1.6337756547221892e-14
+    ],
+    "referenceConvergence": 4.7090746275793695e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.82,
+      1.8,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      8323.73431132158,
+      -4912.045057907009,
+      4.6462655359115725e-14
+    ],
+    "referenceConvergence": 9.142591468321023e-14
+  },
+  {
+    "id": "solenoid",
+    "point": [
+      1.85,
+      2.1,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "radius": 1.75,
+      "nLoops": 160,
+      "length": 4,
+      "direction": "正向（N 在 +Y）"
+    },
+    "reference": [
+      9894.546085730923,
+      1823.1657326862705,
+      2.9245130974907964e-14
+    ],
+    "referenceConvergence": 8.7029625609539e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "length": 2,
+      "strength": 150
+    },
+    "reference": [
+      0.0,
+      137918.52565606625,
+      0.0
+    ],
+    "referenceConvergence": 1.899197173582038e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0,
+      1.05,
+      0
+    ],
+    "params": {
+      "length": 2,
+      "strength": 150
+    },
+    "reference": [
+      -8.064949709571237e-13,
+      64592.2989825596,
+      -2.246480139177081e-12
+    ],
+    "referenceConvergence": 2.480973417554013e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.2,
+      1.05,
+      0.1
+    ],
+    "params": {
+      "length": 2,
+      "strength": 150
+    },
+    "reference": [
+      19559.556671771596,
+      62183.32808881108,
+      7993.408995263302
+    ],
+    "referenceConvergence": 2.839810799415759e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.45,
+      0.9,
+      0.1
+    ],
+    "params": {
+      "length": 2,
+      "strength": 150
+    },
+    "reference": [
+      32682.63391206509,
+      -18110.558581734058,
+      4237.295472394141
+    ],
+    "referenceConvergence": 1.8778266553002936e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      1,
+      0,
+      0
+    ],
+    "params": {
+      "length": 2,
+      "strength": 150
+    },
+    "reference": [
+      0.0,
+      -4940.342143959384,
+      0.0
+    ],
+    "referenceConvergence": 3.313718798186793e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.3,
+      0.95,
+      0.2
+    ],
+    "params": {
+      "length": 2,
+      "strength": 150
+    },
+    "reference": [
+      34187.036564632785,
+      92101.88598833297,
+      15200.012371735134
+    ],
+    "referenceConvergence": 2.303007170694328e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "length": 3,
+      "strength": 150
+    },
+    "reference": [
+      0.0,
+      144237.5724698442,
+      0.0
+    ],
+    "referenceConvergence": 8.071081607482941e-16
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0,
+      1.55,
+      0
+    ],
+    "params": {
+      "length": 3,
+      "strength": 150
+    },
+    "reference": [
+      -8.049691659470992e-13,
+      65448.83056147024,
+      -2.2395488400467023e-12
+    ],
+    "referenceConvergence": 2.4485094560255217e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.2,
+      1.55,
+      0.1
+    ],
+    "params": {
+      "length": 3,
+      "strength": 150
+    },
+    "reference": [
+      19660.08387668571,
+      63019.65398735213,
+      8043.671427028893
+    ],
+    "referenceConvergence": 2.793666838017626e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.45,
+      1.4,
+      0.1
+    ],
+    "params": {
+      "length": 3,
+      "strength": 150
+    },
+    "reference": [
+      32951.53880752332,
+      -17190.430003356538,
+      4297.040088800966
+    ],
+    "referenceConvergence": 1.9202716823654546e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      1,
+      0,
+      0
+    ],
+    "params": {
+      "length": 3,
+      "strength": 150
+    },
+    "reference": [
+      0.0,
+      -3490.2224420540015,
+      0.0
+    ],
+    "referenceConvergence": 1.302917961351611e-16
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.3,
+      1.45,
+      0.2
+    ],
+    "params": {
+      "length": 3,
+      "strength": 150
+    },
+    "reference": [
+      34358.31073784773,
+      93007.02049182067,
+      15314.189653782156
+    ],
+    "referenceConvergence": 2.3006063521286178e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "length": 3.5,
+      "strength": 150
+    },
+    "reference": [
+      0.0,
+      145698.69713742306,
+      0.0
+    ],
+    "referenceConvergence": 1.1985212371233353e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0,
+      1.8,
+      0
+    ],
+    "params": {
+      "length": 3.5,
+      "strength": 150
+    },
+    "reference": [
+      -8.055027970754851e-13,
+      65637.78946500809,
+      -2.240123258828801e-12
+    ],
+    "referenceConvergence": 2.8844389172922493e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.2,
+      1.8,
+      0.1
+    ],
+    "params": {
+      "length": 3.5,
+      "strength": 150
+    },
+    "reference": [
+      19676.89808785579,
+      63206.09110394044,
+      8052.078503867043
+    ],
+    "referenceConvergence": 2.8006901773187468e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.45,
+      1.65,
+      0.1
+    ],
+    "params": {
+      "length": 3.5,
+      "strength": 150
+    },
+    "reference": [
+      32995.20117780902,
+      -16986.572052164174,
+      4306.742569772781
+    ],
+    "referenceConvergence": 1.8894229473199032e-14
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      1,
+      0,
+      0
+    ],
+    "params": {
+      "length": 3.5,
+      "strength": 150
+    },
+    "reference": [
+      0.0,
+      -2905.532959955568,
+      0.0
+    ],
+    "referenceConvergence": 4.225792184481789e-15
+  },
+  {
+    "id": "bar-magnet",
+    "point": [
+      0.3,
+      1.7,
+      0.2
+    ],
+    "params": {
+      "length": 3.5,
+      "strength": 150
+    },
+    "reference": [
+      34386.23967260994,
+      93206.53337576124,
+      15332.80881894516
+    ],
+    "referenceConvergence": 2.2919327482463423e-14
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.02,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      7.116171499733156
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      152.90640394088672,
+      0.0,
+      -6.305418719211822
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      -0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      152.90640394088672,
+      0.0,
+      6.305418719211822
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.02,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      1.7780938833570445
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      58.24964131994261,
+      0.0,
+      18.364418938307026
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      -0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      58.24964131994261,
+      0.0,
+      -18.364418938307026
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.02,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      0.6400409626216117
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      22.150882825040128,
+      0.0,
+      10.27287319422151
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      -0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      22.150882825040128,
+      0.0,
+      -10.27287319422151
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -266.6666666666667
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.02,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -266.85643123999296
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      -75.66502463054186,
+      0.0,
+      -120.59113300492612
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      -0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 1.5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      75.66502463054186,
+      0.0,
+      -120.59113300492612
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -133.33333333333334
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.02,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -133.35704125177807
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      -24.103299856527972,
+      0.0,
+      -111.04734576757532
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      -0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      24.103299856527972,
+      0.0,
+      -111.04734576757532
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -80.0
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.02,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -80.00512032770096
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      -6.420545746388442,
+      0.0,
+      -75.4414125200642
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      -0.4,
+      0,
+      0.7
+    ],
+    "params": {
+      "current1": 50,
+      "current2": 50,
+      "spacing": 5,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      6.420545746388442,
+      0.0,
+      -75.4414125200642
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.3,
+      0,
+      0.8
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "仅左导线"
+    },
+    "reference": [
+      10.309278350515463,
+      0.0,
+      -23.195876288659793
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "仅左导线"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -33.333333333333336
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.3,
+      0,
+      0.8
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "仅右导线"
+    },
+    "reference": [
+      61.53846153846153,
+      0.0,
+      92.3076923076923
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "仅右导线"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      106.66666666666667
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.3,
+      0,
+      0.8
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      71.847739888977,
+      0.0,
+      69.11181601903252
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "同向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      73.33333333333334
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.3,
+      0,
+      0.8
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "仅左导线"
+    },
+    "reference": [
+      10.309278350515463,
+      0.0,
+      -23.195876288659793
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "仅左导线"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -33.333333333333336
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.3,
+      0,
+      0.8
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "仅右导线"
+    },
+    "reference": [
+      -61.53846153846153,
+      0.0,
+      -92.3076923076923
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "仅右导线"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -106.66666666666667
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0.3,
+      0,
+      0.8
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      -51.22918318794607,
+      0.0,
+      -115.5035685963521
+    ]
+  },
+  {
+    "id": "two-wires",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current1": 25,
+      "current2": 80,
+      "spacing": 3,
+      "direction": "反向",
+      "display": "合磁场"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -140.0
+    ]
+  },
+  {
+    "id": "straight-wire",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "direction": "向上（+Y）"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "id": "straight-wire",
+    "point": [
+      0.03,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "direction": "向上（+Y）"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -833.3333333333334
+    ]
+  },
+  {
+    "id": "straight-wire",
+    "point": [
+      0.06,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "direction": "向上（+Y）"
+    },
+    "reference": [
+      0.0,
+      0.0,
+      -1666.6666666666667
+    ]
+  },
+  {
+    "id": "straight-wire",
+    "point": [
+      0.1,
+      0,
+      0.2
+    ],
+    "params": {
+      "current": 50,
+      "direction": "向上（+Y）"
+    },
+    "reference": [
+      399.99999999999994,
+      0.0,
+      -199.99999999999997
+    ]
+  },
+  {
+    "id": "straight-wire",
+    "point": [
+      2,
+      3,
+      4
+    ],
+    "params": {
+      "current": 50,
+      "direction": "向上（+Y）"
+    },
+    "reference": [
+      20.0,
+      0.0,
+      -10.0
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向上"
+    },
+    "reference": [
+      5.551115123125783e-15,
+      19.211425389802503,
+      -104.51110921276276
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      -1.9,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向上"
+    },
+    "reference": [
+      -11.678062717738548,
+      11.071770529192772,
+      -1031.642305408516
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      0.5,
+      2.6,
+      0.1
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向上"
+    },
+    "reference": [
+      -0.7317780710512867,
+      -299.7864768473954,
+      -516.0360279333624
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      2.5,
+      3,
+      0.7
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向上"
+    },
+    "reference": [
+      -30.045018510893513,
+      -23.492988270225375,
+      24.116744461767247
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向下"
+    },
+    "reference": [
+      -5.551115123125783e-15,
+      -19.211425389802503,
+      104.51110921276276
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      -1.9,
+      0,
+      0
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向下"
+    },
+    "reference": [
+      11.678062717738548,
+      -11.071770529192772,
+      1031.642305408516
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      0.5,
+      2.6,
+      0.1
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向下"
+    },
+    "reference": [
+      0.7317780710512867,
+      299.7864768473954,
+      516.0360279333624
+    ]
+  },
+  {
+    "id": "bent-wire",
+    "point": [
+      2.5,
+      3,
+      0.7
+    ],
+    "params": {
+      "current": 50,
+      "width": 4,
+      "height": 5.5,
+      "direction": "左侧向下"
+    },
+    "reference": [
+      30.045018510893513,
+      23.492988270225375,
+      -24.116744461767247
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      3,
+      1,
+      2
+    ],
+    "params": {
+      "tilt": 0,
+      "moment": 30
+    },
+    "reference": [
+      -4.479475679561664,
+      5.474914719464255,
+      -2.9863171197077754
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      3,
+      0
+    ],
+    "params": {
+      "tilt": 0,
+      "moment": 30
+    },
+    "reference": [
+      -0.0,
+      -27.037777777777762,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "tilt": 0,
+      "moment": 30
+    },
+    "reference": [
+      0.0,
+      -150.0,
+      0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0.2,
+      0.4,
+      0.6
+    ],
+    "params": {
+      "tilt": 0,
+      "moment": 30
+    },
+    "reference": [
+      -1.361058601134216,
+      -133.66729678638941,
+      -4.083175803402647
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      2.300001,
+      0
+    ],
+    "params": {
+      "tilt": 0,
+      "moment": 30
+    },
+    "reference": [
+      -0.0,
+      -59.9999217391985,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      2.299999,
+      0
+    ],
+    "params": {
+      "tilt": 0,
+      "moment": 30
+    },
+    "reference": [
+      -0.0,
+      -60.00007826085255,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      3,
+      1,
+      2
+    ],
+    "params": {
+      "tilt": 11.5,
+      "moment": 30
+    },
+    "reference": [
+      -3.099567818197138,
+      6.258068002801523,
+      -1.1402382944212097
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      3,
+      0
+    ],
+    "params": {
+      "tilt": 11.5,
+      "moment": 30
+    },
+    "reference": [
+      -2.695232953393375,
+      -26.494986402492515,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "tilt": 11.5,
+      "moment": 30
+    },
+    "reference": [
+      29.905190162579576,
+      -146.98870569312444,
+      0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0.2,
+      0.4,
+      0.6
+    ],
+    "params": {
+      "tilt": 11.5,
+      "moment": 30
+    },
+    "reference": [
+      24.9082107488515,
+      -130.71253487893853,
+      -3.594177680170925
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      2.300001,
+      0
+    ],
+    "params": {
+      "tilt": 11.5,
+      "moment": 30
+    },
+    "reference": [
+      -5.981030231168743,
+      -58.795405587556985,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      2.299999,
+      0
+    ],
+    "params": {
+      "tilt": 11.5,
+      "moment": 30
+    },
+    "reference": [
+      -5.981006827106886,
+      -58.79555896699259,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      3,
+      1,
+      2
+    ],
+    "params": {
+      "tilt": 25,
+      "moment": 30
+    },
+    "reference": [
+      -1.325294031597008,
+      6.855066068818119,
+      1.0796939902601606
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      3,
+      0
+    ],
+    "params": {
+      "tilt": 25,
+      "moment": 30
+    },
+    "reference": [
+      -5.713329322887876,
+      -24.504548544166482,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      0,
+      0
+    ],
+    "params": {
+      "tilt": 25,
+      "moment": 30
+    },
+    "reference": [
+      63.39273926110491,
+      -135.94616805549748,
+      0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0.2,
+      0.4,
+      0.6
+    ],
+    "params": {
+      "tilt": 25,
+      "moment": 30
+    },
+    "reference": [
+      54.39389028041307,
+      -120.56850372950514,
+      -2.8378016962555925
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      2.300001,
+      0
+    ],
+    "params": {
+      "tilt": 25,
+      "moment": 30
+    },
+    "reference": [
+      -12.67853131499903,
+      -54.37839629382516,
+      -0.0
+    ]
+  },
+  {
+    "id": "earth",
+    "point": [
+      0,
+      2.299999,
+      0
+    ],
+    "params": {
+      "tilt": 25,
+      "moment": 30
+    },
+    "reference": [
+      -12.678481703290062,
+      -54.37853815061907,
+      -0.0
+    ]
+  }
+]

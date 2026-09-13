@@ -1,21 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import vm from 'node:vm';
 import * as THREE from '../vendor/three.module.js';
-const context = vm.createContext({THREE, performance, window: {}, console, URLSearchParams});
-const source = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8')
-  .replace(/^import .*;\n/gm, '').replace(/\ninit\(\);\s*$/, '');
-vm.runInContext(source, context);
-function run(params = {}, section = {}) {
-  context.testParams = params;
-  context.testSection = section;
-  return vm.runInContext(`(()=>{
-    Object.assign(SECTION,{n:'y',off:.4,rot:0},testSection);
-    const params={current1:50,current2:50,spacing:3,direction:'同向',display:'合磁场',...testParams};
-    const field=buildField('two-wires',params),sec=computeSectionBasis();
-    return {field,sec,lines:generateProjectedStreamlines(field.evalB,sec,11,field)};
-  })()`, context);
+import {buildField, computeSectionBasis, generateProjectedStreamlines} from '../field-core.js';
+function run(overrides = {}, section = {}) {
+  const params={current1:50,current2:50,spacing:3,direction:'同向',display:'合磁场',...overrides};
+  const field=buildField('two-wires',params),sec=computeSectionBasis({n:'y',off:.4,rot:0,...section});
+  return {field,sec,lines:generateProjectedStreamlines(field.evalB,sec,11,field)};
 }
 const bounds = line => new THREE.Box3().setFromPoints(line);
 const closed = line => line[0].distanceTo(line.at(-1)) < 1e-8;

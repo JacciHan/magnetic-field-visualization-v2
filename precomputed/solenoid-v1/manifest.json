@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "fieldCoreSha256": "f372c35e8ab148ac345fecb095a0d412c7b2ec502b1d04582f5821c32e186a5c",
+  "description": "48-point Gauss field, unchanged RK4 and quality gates; positive unit ampere-turn, R/L grid from UI",
+  "entries": [
+    {
+      "radius": 1,
+      "length": 4,
+      "name": "r1-l4.json.gz",
+      "bytes": 175570,
+      "sha256": "b53cae394e2956c7dc1f3b533fff82f21f6725a59920f89b63dc8a53dbb2b25e",
+      "total": 19
+    },
+    {
+      "radius": 1,
+      "length": 4.5,
+      "name": "r1-l4.5.json.gz",
+      "bytes": 185509,
+      "sha256": "6b1e22675f352cea073615c610c26ad4c9b16f09b560005ad33fc28bb0bf49fb",
+      "total": 19
+    },
+    {
+      "radius": 1,
+      "length": 5,
+      "name": "r1-l5.json.gz",
+      "bytes": 195256,
+      "sha256": "970f1884254df45aa63112a461bd4ecde6228f88f110fb222a38fe17e353c20e",
+      "total": 19
+    },
+    {
+      "radius": 1,
+      "length": 5.5,
+      "name": "r1-l5.5.json.gz",
+      "bytes": 204598,
+      "sha256": "1b655f1861f6b9ec98ebf2e6f742015136b61cdb53b70dd3073a2797326eac14",
+      "total": 19
+    },
+    {
+      "radius": 1,
+      "length": 6,
+      "name": "r1-l6.json.gz",
+      "bytes": 186098,
+      "sha256": "c2853c726be16d9952fcf5b3f1f641fbfddae61b440afbd0cca0f97f10df3bf2",
+      "total": 19
+    },
+    {
+      "radius": 1,
+      "length": 6.5,
+      "name": "r1-l6.5.json.gz",
+      "bytes": 193643,
+      "sha256": "4ff06845327d759b59dbcef4fa6b2017a82dfeef3523806dc6009c6060b5eb60",
+      "total": 19
+    },
+    {
+      "radius": 1,
+      "length": 7,
+      "name": "r1-l7.json.gz",
+      "bytes": 167144,
+      "sha256": "ca7c3f99853d013c923788c287f21a9a3d9116c587021a6f00df3e8bb42a5c1e",
+      "total": 13
+    },
+    {
+      "radius": 1,
+      "length": 7.5,
+      "name": "r1-l7.5.json.gz",
+      "bytes": 172034,
+      "sha256": "9777cdd8390b0ced458148fb3fe8f352158de9f03cdbe76ba7c55a31838ab669",
+      "total": 13
+    },
+    {
+      "radius": 1,
+      "length": 8,
+      "name": "r1-l8.json.gz",
+      "bytes": 176890,
+      "sha256": "d3b3b554265286fbf4cb418bbe0a302adcdf173c9c8a2830eec4dc41e5a37ad9",
+      "total": 13
+    },
+    {
+      "radius": 1.25,
+      "length": 4,
+      "name": "r1.25-l4.json.gz",
+      "bytes": 172926,
+      "sha256": "466da016270cd1fa8b6aba2a0cb6b4759281ccd161e6f368f3a5f6f7fe73bbdd",
+      "total": 19
+    },
+    {
+      "radius": 1.25,
+      "length": 4.5,
+      "name": "r1.25-l4.5.json.gz",
+      "bytes": 182211,
+      "sha256": "9260539dd275f4efd756b521580dcd94727a3c2752d3db76f53c39d516feb4be",
+      "total": 19
+    },
+    {
+      "radius": 1.25,
+      "length": 5,
+      "name": "r1.25-l5.json.gz",
+      "bytes": 191807,
+      "sha256": "266d2aec29774b1736dd906747edd5e4fa4cd640b511e4dc1fd7fb2ed553a351",
+      "total": 19
+    },
+    {
+      "radius": 1.25,
+      "length": 5.5,
+      "name": "r1.25-l5.5.json.gz",
+      "bytes": 200942,
+      "sha256": "04e5137bf8b6c44ed96b1171dda76a2a71faa7765af0b7875e3f4cd30c0ed445",
+      "total": 19
+    },
+    {
+      "radius": 1.25,
+      "length": 6,
+      "name": "r1.25-l6.json.gz",
+      "bytes": 210130,
+      "sha256": "ce549ff2a46c47065c29d45aa82be01f1e1cd351b7acfd0adfd11562518e9508",
+      "total": 19
+    },
+    {
+      "radius": 1.25,
+      "length": 6.5,
+      "name": "r1.25-l6.5.json.gz",
+      "bytes": 190045,
+      "sha256": "c40fcbbd248f8df0a3189d1c192ac64f5efba071ceac6f13dfe2811a282dcbe9",
+      "total": 19
+    },
+    {
+      "radius": 1.25,
+      "length": 7,
+      "name": "r1.25-l7.json.gz",
+      "bytes": 164176,
+      "sha256": "a35344c8143f212c8ad3ce8301c29bc22a2a98fbc3618bdcfae8098697c596de",
+      "total": 13
+    },
+    {
+      "radius": 1.25,
+      "length": 7.5,
+      "name": "r1.25-l7.5.json.gz",
+      "bytes": 168827,
+      "sha256": "3cfb91258940878643164c39eefaccd054f376bc8de7679578b268f0b2faefe1",
+      "total": 13
+    },
+    {
+      "radius": 1.25,
+      "length": 8,
+      "name": "r1.25-l8.json.gz",
+      "bytes": 173794,
+      "sha256": "f2dafa9651a41d2d707abfa010c7fee94c075d4ad0e7039d03f8093446c3eac9",
+      "total": 13
+    },
+    {
+      "radius": 1.5,
+      "length": 4,
+      "name": "r1.5-l4.json.gz",
+      "bytes": 171467,
+      "sha256": "8532fdb06053c6d174f92b96eb45027b5cd5af3f95efe1e02fa9796c29883346",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 4.5,
+      "name": "r1.5-l4.5.json.gz",
+      "bytes": 179904,
+      "sha256": "018dc8c94f99334b012571334003924884db3e4cd3b2892a2141adb26e2d144c",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 5,
+      "name": "r1.5-l5.json.gz",
+      "bytes": 189593,
+      "sha256": "3cb07aedfaa50833fad4f87078fc5fa0002827835fa14dcb93f3913c266fa266",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 5.5,
+      "name": "r1.5-l5.5.json.gz",
+      "bytes": 198515,
+      "sha256": "0f10138707245f400345248dd84c68157769cbb7f2fa1b9648a8ac523ae9e5c8",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 6,
+      "name": "r1.5-l6.json.gz",
+      "bytes": 207298,
+      "sha256": "be9bf5402fcea928a5a590f31ad5033d6df480f2837a89a31a460041dab97910",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 6.5,
+      "name": "r1.5-l6.5.json.gz",
+      "bytes": 187108,
+      "sha256": "0ac4804ba3bcb7c2814614a85afa997be2aa4e90a3c85f9a77db066d8516062c",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 7,
+      "name": "r1.5-l7.json.gz",
+      "bytes": 194086,
+      "sha256": "e1a399c741abda4882e9ed2ef5615c0070c8f4c94c0926b0b8d5c3762e6ca4a2",
+      "total": 19
+    },
+    {
+      "radius": 1.5,
+      "length": 7.5,
+      "name": "r1.5-l7.5.json.gz",
+      "bytes": 166495,
+      "sha256": "99120202b2d52899cf66fd63c6dd471cf6e154b6b1de6bb5a39099658c0d0f0b",
+      "total": 13
+    },
+    {
+      "radius": 1.5,
+      "length": 8,
+      "name": "r1.5-l8.json.gz",
+      "bytes": 171207,
+      "sha256": "78f66f4d505619f06eb5d53926010a268b2b306e0c195fb38d7d9fae1262875d",
+      "total": 13
+    },
+    {
+      "radius": 1.75,
+      "length": 4,
+      "name": "r1.75-l4.json.gz",
+      "bytes": 170443,
+      "sha256": "ca2f5049d3455bce364d55f914fcfc2982ee1a081690c1c264c372e4e69c832b",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 4.5,
+      "name": "r1.75-l4.5.json.gz",
+      "bytes": 178877,
+      "sha256": "6a5ab2eaf358fa3e7f005eecd112df000c010bf88bb44b2948425d8470f309c4",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 5,
+      "name": "r1.75-l5.json.gz",
+      "bytes": 188242,
+      "sha256": "636be689688b3c5735f46b0e6ea3d8cdf878a12ff02816d990ce2b228a42a4a9",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 5.5,
+      "name": "r1.75-l5.5.json.gz",
+      "bytes": 197151,
+      "sha256": "3b25e649535f9c71ee8a93cee1d525c4e882fb1e78242ae75cd0f0152490f02a",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 6,
+      "name": "r1.75-l6.json.gz",
+      "bytes": 205267,
+      "sha256": "d96fe63657587db3ad4847a9fb4d558908e3dfbaeaad53d0b712c16b8547a2bc",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 6.5,
+      "name": "r1.75-l6.5.json.gz",
+      "bytes": 185531,
+      "sha256": "3fb80bf5ac69cb9af6678de82ffd703a2c627375e3dcd69b310abd1269b9e8f5",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 7,
+      "name": "r1.75-l7.json.gz",
+      "bytes": 192222,
+      "sha256": "475bdb200ee98e7675c144f6dda88431f1034b399cbb48f4a15d8baeb1edbe63",
+      "total": 19
+    },
+    {
+      "radius": 1.75,
+      "length": 7.5,
+      "name": "r1.75-l7.5.json.gz",
+      "bytes": 164975,
+      "sha256": "c9fc45155361e476a2fb030895d3971382a4e1855b68c320cf63b819f8b94d58",
+      "total": 13
+    },
+    {
+      "radius": 1.75,
+      "length": 8,
+      "name": "r1.75-l8.json.gz",
+      "bytes": 169462,
+      "sha256": "2ec16f5e6ef4fa47748512129f7ea1c1baf73d22d928665b037137969cdc4a22",
+      "total": 13
+    }
+  ]
+}
